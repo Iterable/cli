@@ -82,7 +82,25 @@ function formatTable(data: unknown, columns?: string[]): string {
     if (firstItem && typeof firstItem === "object") {
       let selectedColumns: string[];
       if (columns && columns.length > 0) {
-        selectedColumns = columns;
+        const allKeys = new Set<string>();
+        for (const item of arrayData) {
+          if (item && typeof item === "object") {
+            Object.keys(item as Record<string, unknown>).forEach((k) =>
+              allKeys.add(k)
+            );
+          }
+        }
+        const invalid = columns.filter((c) => !allKeys.has(c));
+        if (invalid.length > 0) {
+          console.error(
+            // eslint-disable-line no-console
+            `Warning: unknown column(s): ${invalid.join(", ")}. Available: ${[...allKeys].join(", ")}`
+          );
+        }
+        selectedColumns = columns.filter((c) => allKeys.has(c));
+        if (selectedColumns.length === 0) {
+          selectedColumns = [...allKeys];
+        }
       } else {
         const allKeys = new Set<string>();
         for (const item of arrayData) {

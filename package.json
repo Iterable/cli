@@ -40,7 +40,7 @@
     ]
   },
   "scripts": {
-    "build": "pnpm lint:fix && tsc --project tsconfig.build.json && pnpm update-commands && chmod +x dist/index.js",
+    "build": "pnpm format && pnpm lint:fix && tsc --project tsconfig.build.json && pnpm update-commands && chmod +x dist/index.js",
     "build:clean": "rm -rf dist && pnpm build",
     "build:dev": "tsc --incremental && pnpm update-commands && chmod +x dist/index.js",
     "build:watch": "tsc --incremental --watch",
