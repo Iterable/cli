@@ -20,6 +20,7 @@ export interface CommandDefinition {
   cliTransforms?: Record<string, CliTransform>;
   examples?: string[];
   isAlias?: boolean;
+  destructive?: boolean;
 }
 
 export function defineCommand<
@@ -38,6 +39,7 @@ export function defineCommand<
   positionalArgs?: (keyof z.infer<TSchema> & string)[];
   cliTransforms?: Record<string, CliTransform>;
   examples?: string[];
+  destructive?: boolean;
 }): CommandDefinition {
   const userExecute = def.execute;
   const execute: CommandDefinition["execute"] = userExecute
@@ -64,6 +66,7 @@ export function defineAlias<TSchema extends z.ZodType>(def: {
   positionalArgs?: (keyof z.infer<TSchema> & string)[];
   cliTransforms?: Record<string, CliTransform>;
   examples?: string[];
+  destructive?: boolean;
 }): CommandDefinition {
   const execute: CommandDefinition["execute"] = (client, params) =>
     def.execute(client, params as z.infer<TSchema>);

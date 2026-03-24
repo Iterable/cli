@@ -9,7 +9,7 @@ describe("parseArgs", () => {
       category: "campaigns",
       action: "list",
       rest: [],
-      globalFlags: { help: false, version: false },
+      globalFlags: { help: false, version: false, force: false },
     });
   });
 
@@ -77,7 +77,11 @@ describe("parseArgs", () => {
     expect(result.category).toBeNull();
     expect(result.action).toBeNull();
     expect(result.rest).toEqual([]);
-    expect(result.globalFlags).toEqual({ help: false, version: false });
+    expect(result.globalFlags).toEqual({
+      help: false,
+      version: false,
+      force: false,
+    });
   });
 
   it("handles help with category", () => {

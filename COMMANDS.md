@@ -1572,3 +1572,11 @@ Remove a key by ID or name
 iterable keys delete <name-or-id>
 ```
 
+### keys validate
+
+Test the API connection
+
+```
+iterable keys validate
+```
+

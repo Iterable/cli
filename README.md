@@ -116,6 +116,8 @@ See the [full command reference](COMMANDS.md) for all 109 commands with paramete
 | `--output <format>` | Output format: `json`, `pretty`, `table` |
 | `--columns <cols>` | Comma-separated columns for table output |
 | `--json <data>` | Pass raw JSON (use `-` for stdin) |
+| `--file <path>` | Read JSON input from a file |
+| `--force, -f` | Skip confirmation prompts for destructive commands |
 
 ## Output Formats
 
@@ -157,6 +159,7 @@ iterable keys activate <name>       # Switch active key
 iterable keys deactivate            # Deactivate current key
 iterable keys update <name>         # Update an existing key
 iterable keys delete <name>         # Remove a key
+iterable keys validate              # Test the API connection
 ```
 
 Keys are stored securely using:

@@ -49,4 +49,5 @@ export const KEYS_COMMAND_TABLE: ReadonlyArray<readonly [string, string]> = [
   [`${COMMAND_NAME} keys activate <name-or-id>`, "Switch to a different key"],
   [`${COMMAND_NAME} keys deactivate`, "Deactivate the current key"],
   [`${COMMAND_NAME} keys delete <name-or-id>`, "Remove a key by ID or name"],
+  [`${COMMAND_NAME} keys validate`, "Test the API connection"],
 ] as const;

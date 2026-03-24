@@ -1,7 +1,9 @@
 /* eslint-disable no-console */
+import { IterableClient } from "@iterable/api";
 import chalk from "chalk";
 import inquirer from "inquirer";
 
+import { loadCliConfig } from "./config.js";
 import type { ApiKeyMetadata, KeyManager } from "./key-manager.js";
 import { getKeyManager } from "./key-manager.js";
 import { getSpinner, isTestEnv } from "./utils/cli-env.js";
@@ -23,7 +25,6 @@ import {
 
 function displayKeyDetails(meta: ApiKeyMetadata): void {
   const w = 12;
-  console.log();
   console.log(`  ${"Name:".padEnd(w)} ${chalk.white.bold(meta.name)}`);
   console.log(`  ${"ID:".padEnd(w)} ${chalk.gray(meta.id)}`);
   console.log(`  ${"Endpoint:".padEnd(w)} ${linkColor()(meta.baseUrl)}`);
@@ -468,6 +469,53 @@ export async function handleKeysCommand(args: string[]): Promise<void> {
         await keyManager.deleteKey(keyToDelete.id);
         showSuccess("Key securely removed");
       } catch (error: unknown) {
+        showError(error instanceof Error ? error.message : "Unknown error");
+        process.exit(1);
+      }
+      break;
+    }
+
+    case "validate": {
+      spinner.start("Validating API connection...");
+      try {
+        const config = await loadCliConfig();
+        const client = new IterableClient({
+          apiKey: config.apiKey,
+          baseUrl: config.baseUrl,
+        });
+        try {
+          await client.getUserFields();
+          spinner.succeed("API connection successful");
+          const w = 12;
+          if (process.env.ITERABLE_API_KEY) {
+            console.log(
+              `  ${"Source:".padEnd(w)} ${chalk.white("ITERABLE_API_KEY environment variable")}`
+            );
+          } else {
+            const activeMeta = await keyManager.getActiveKeyMetadata();
+            if (activeMeta) {
+              console.log(
+                `  ${"Key:".padEnd(w)} ${chalk.white.bold(activeMeta.name)}`
+              );
+            }
+          }
+          const endpoint = config.baseUrl.replace("https://", "");
+          console.log(`  ${"Endpoint:".padEnd(w)} ${linkColor()(endpoint)}`);
+        } finally {
+          client.destroy();
+        }
+      } catch (error: unknown) {
+        spinner.fail("API connection failed");
+        if (process.env.ITERABLE_API_KEY) {
+          showInfo("Source: ITERABLE_API_KEY environment variable");
+        } else {
+          const activeMeta = await keyManager
+            .getActiveKeyMetadata()
+            .catch(() => null);
+          if (activeMeta) {
+            showInfo(`Key: ${activeMeta.name}`);
+          }
+        }
         showError(error instanceof Error ? error.message : "Unknown error");
         process.exit(1);
       }

@@ -45,5 +45,6 @@ export const snippetCommands: CommandDefinition[] = [
     description: "Delete a snippet by ID (numeric) or name (string)",
     clientMethod: "deleteSnippet",
     schema: DeleteSnippetParamsSchema,
+    destructive: true,
   }),
 ];

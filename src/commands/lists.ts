@@ -55,6 +55,7 @@ export const listCommands: CommandDefinition[] = [
     description: "Delete a user list",
     clientMethod: "deleteList",
     schema: DeleteListParamsSchema,
+    destructive: true,
   }),
   defineCommand({
     category: "lists",

@@ -52,6 +52,7 @@ export const catalogCommands: CommandDefinition[] = [
     description: "Delete a catalog",
     clientMethod: "deleteCatalog",
     schema: DeleteCatalogParamsSchema,
+    destructive: true,
   }),
   defineCommand({
     category: "catalogs",
@@ -80,6 +81,7 @@ export const catalogCommands: CommandDefinition[] = [
     description: "Delete a specific catalog item by ID",
     clientMethod: "deleteCatalogItem",
     schema: DeleteCatalogItemParamsSchema,
+    destructive: true,
   }),
   defineCommand({
     category: "catalogs",
@@ -87,6 +89,7 @@ export const catalogCommands: CommandDefinition[] = [
     description: "Bulk delete catalog items by their IDs",
     clientMethod: "bulkDeleteCatalogItems",
     schema: BulkDeleteCatalogItemsParamsSchema,
+    destructive: true,
   }),
   defineCommand({
     category: "catalogs",

@@ -17,8 +17,10 @@ import { theme } from "./utils/theme.js";
 export interface GlobalFlags {
   help: boolean;
   version: boolean;
+  force: boolean;
   output?: OutputFormat;
   columns?: string[];
+  file?: string;
 }
 
 export interface ParsedArgs {
@@ -29,7 +31,11 @@ export interface ParsedArgs {
 }
 
 export function parseArgs(argv: string[]): ParsedArgs {
-  const globalFlags: GlobalFlags = { help: false, version: false };
+  const globalFlags: GlobalFlags = {
+    help: false,
+    version: false,
+    force: false,
+  };
   const remaining: string[] = [];
 
   for (let i = 0; i < argv.length; i++) {
@@ -52,6 +58,16 @@ export function parseArgs(argv: string[]): ParsedArgs {
         process.exit(2);
       }
       globalFlags.output = value as OutputFormat;
+    } else if (arg === "--force" || arg === "-f") {
+      globalFlags.force = true;
+    } else if (arg === "--file" && i + 1 < argv.length) {
+      i++;
+      const value = argv[i] ?? "";
+      if (value.startsWith("-")) {
+        console.error("--file requires a file path");
+        process.exit(2);
+      }
+      globalFlags.file = value;
     } else if (arg === "--columns" && i + 1 < argv.length) {
       i++;
       const value = argv[i] ?? "";
@@ -180,6 +196,8 @@ export async function showGlobalHelp(): Promise<void> {
     `  ${theme.accent("--output")} <fmt>    Output format: ${OUTPUT_FORMATS.join(", ")} (default: pretty)`,
     `  ${theme.accent("--columns")} <cols>  Columns to show in table output (comma-separated)`,
     `  ${theme.accent("--json")} <data>     Pass raw JSON — bypasses all other flags (use '-' for stdin)`,
+    `  ${theme.accent("--file")} <path>    Read JSON input from a file`,
+    `  ${theme.accent("--force, -f")}      Skip confirmation prompts for destructive commands`,
     "",
     theme.bold("KEY MANAGEMENT")
   );

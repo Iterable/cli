@@ -59,6 +59,7 @@ export const userCommands: CommandDefinition[] = [
       params.identifier.includes("@")
         ? client.deleteUserByEmail({ email: params.identifier })
         : client.deleteUserByUserId({ userId: params.identifier }),
+    destructive: true,
   }),
   defineCommand({
     category: "users",
@@ -66,6 +67,7 @@ export const userCommands: CommandDefinition[] = [
     description: "Delete a user by email address (asynchronous)",
     clientMethod: "deleteUserByEmail",
     schema: DeleteUserByEmailParamsSchema,
+    destructive: true,
   }),
   defineCommand({
     category: "users",
@@ -74,6 +76,7 @@ export const userCommands: CommandDefinition[] = [
       "Delete a user by user ID (asynchronous, deletes all users with same userId)",
     clientMethod: "deleteUserByUserId",
     schema: DeleteUserByUserIdParamsSchema,
+    destructive: true,
   }),
   defineCommand({
     category: "users",

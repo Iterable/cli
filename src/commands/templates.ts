@@ -41,6 +41,7 @@ export const templateCommands: CommandDefinition[] = [
     description: "Delete one or more templates by ID",
     clientMethod: "deleteTemplates",
     schema: BulkDeleteTemplatesParamsSchema,
+    destructive: true,
   }),
 
   // Email templates

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { IterableClient } from "@iterable/api";
+import { readFileSync } from "fs";
 import { z } from "zod";
 
 import { loadCliConfig } from "./config.js";
@@ -75,13 +76,39 @@ async function main(): Promise<void> {
   });
 
   try {
+    let restArgs = parsed.rest;
+    if (parsed.globalFlags.file) {
+      const content = readFileSync(parsed.globalFlags.file, "utf-8").trim();
+      restArgs = ["--json", content];
+    }
+
     const params = await parseCommand(
       command.schema,
       `iterable ${parsed.category} ${parsed.action}`,
-      parsed.rest,
+      restArgs,
       command.positionalArgs,
       command.cliTransforms
     );
+
+    if (
+      command.destructive &&
+      !parsed.globalFlags.force &&
+      process.stdin.isTTY
+    ) {
+      const { default: inquirer } = await import("inquirer");
+      const { confirm } = await inquirer.prompt([
+        {
+          type: "confirm",
+          name: "confirm",
+          message: `This will run a destructive operation (${parsed.category} ${parsed.action}). Continue?`,
+          default: false,
+        },
+      ]);
+      if (!confirm) {
+        console.error("Aborted."); // eslint-disable-line no-console
+        process.exit(0);
+      }
+    }
 
     const result = await command.execute(client, params);
 
