@@ -1,0 +1,5 @@
+- [Home](/)
+- [Available Commands](COMMANDS.md)
+- [Contributing](CONTRIBUTING.md)
+- [Security](SECURITY.md)
+- [License](LICENSE.md)
