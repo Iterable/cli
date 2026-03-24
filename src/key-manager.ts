@@ -50,7 +50,9 @@ async function execSecurityDefault(args: string[]): Promise<string> {
     };
     const stderr = errObj.stderr?.toString().trim();
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Security command failed: ${stderr ?? message}`);
+    throw new Error(`Security command failed: ${stderr ?? message}`, {
+      cause: error,
+    });
   }
 }
 
@@ -353,7 +355,8 @@ export class KeyManager {
     } catch (error) {
       logger.error("Failed to initialize key manager", { error });
       throw new Error(
-        `Failed to initialize key manager: ${error instanceof Error ? error.message : String(error)}`
+        `Failed to initialize key manager: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error }
       );
     }
   }
@@ -424,7 +427,8 @@ export class KeyManager {
       } catch (error) {
         logger.error("Failed to save key metadata", { error });
         throw new Error(
-          `Failed to save key metadata: ${error instanceof Error ? error.message : String(error)}`
+          `Failed to save key metadata: ${error instanceof Error ? error.message : String(error)}`,
+          { cause: error }
         );
       } finally {
         await unlock();
@@ -470,7 +474,8 @@ export class KeyManager {
       url = new URL(baseUrl);
     } catch (error) {
       throw new Error(
-        `Invalid base URL format: ${error instanceof Error ? error.message : String(error)}`
+        `Invalid base URL format: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error }
       );
     }
 
@@ -534,7 +539,8 @@ export class KeyManager {
     } catch (error) {
       logger.error("DPAPI encryption failed", { error });
       throw new Error(
-        `Failed to encrypt data with Windows DPAPI: ${error instanceof Error ? error.message : String(error)}`
+        `Failed to encrypt data with Windows DPAPI: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error }
       );
     }
   }
@@ -581,7 +587,8 @@ export class KeyManager {
     } catch (error) {
       logger.error("DPAPI decryption failed", { error });
       throw new Error(
-        `Failed to decrypt data with Windows DPAPI: ${error instanceof Error ? error.message : String(error)}`
+        `Failed to decrypt data with Windows DPAPI: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error }
       );
     }
   }
@@ -693,7 +700,8 @@ export class KeyManager {
             id: metadata.id,
           });
           throw new Error(
-            `Failed to store key in macOS Keychain: ${error instanceof Error ? error.message : String(error)}`
+            `Failed to store key in macOS Keychain: ${error instanceof Error ? error.message : String(error)}`,
+            { cause: error }
           );
         }
         break;
@@ -707,7 +715,8 @@ export class KeyManager {
             id: metadata.id,
           });
           throw new Error(
-            `Failed to encrypt key with Windows DPAPI: ${error instanceof Error ? error.message : String(error)}`
+            `Failed to encrypt key with Windows DPAPI: ${error instanceof Error ? error.message : String(error)}`,
+            { cause: error }
           );
         }
         break;
@@ -866,7 +875,8 @@ export class KeyManager {
             id: keyMeta.id,
           });
           throw new Error(
-            `Failed to retrieve key from macOS Keychain: ${error instanceof Error ? error.message : String(error)}`
+            `Failed to retrieve key from macOS Keychain: ${error instanceof Error ? error.message : String(error)}`,
+            { cause: error }
           );
         }
 
@@ -881,7 +891,8 @@ export class KeyManager {
               id: keyMeta.id,
             });
             throw new Error(
-              `Failed to decrypt key with Windows DPAPI: ${error instanceof Error ? error.message : String(error)}`
+              `Failed to decrypt key with Windows DPAPI: ${error instanceof Error ? error.message : String(error)}`,
+              { cause: error }
             );
           }
         } else if (keyMeta.apiKey) {

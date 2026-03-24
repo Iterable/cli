@@ -422,7 +422,7 @@ export async function handleKeysCommand(args: string[]): Promise<void> {
         showInfo("This is your active key.");
       }
 
-      let confirmDelete = false;
+      let confirmDelete: boolean;
       if (isTestEnv()) {
         confirmDelete = true;
       } else {
@@ -479,9 +479,14 @@ export async function handleKeysCommand(args: string[]): Promise<void> {
       spinner.start("Validating API connection...");
       try {
         const config = await loadCliConfig();
+        const debug =
+          process.env.ITERABLE_DEBUG === "true" ||
+          process.env.ITERABLE_DEBUG_VERBOSE === "true";
         const client = new IterableClient({
           apiKey: config.apiKey,
           baseUrl: config.baseUrl,
+          debug,
+          debugVerbose: process.env.ITERABLE_DEBUG_VERBOSE === "true",
         });
         try {
           await client.getUserFields();

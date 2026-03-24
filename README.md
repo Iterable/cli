@@ -12,6 +12,8 @@ A command-line interface for the [Iterable API](https://api.iterable.com/api/doc
 - Node.js >= 20 (v22 LTS recommended)
 - An Iterable API key
 
+Install from npm:
+
 ```bash
 npm install -g @iterable/cli
 ```
@@ -146,7 +148,9 @@ Without `--columns`, all fields are shown.
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `ITERABLE_API_KEY` | API key (overrides key manager) | — |
-| `ITERABLE_BASE_URL` | API base URL | `https://api.iterable.com` |
+| `ITERABLE_BASE_URL` | API base URL (overrides key manager) | `https://api.iterable.com` |
+| `ITERABLE_DEBUG` | Enable debug logging (HTTP requests/responses to stderr) | `false` |
+| `ITERABLE_DEBUG_VERBOSE` | Include response bodies in debug output (may contain PII) | `false` |
 
 ### Key Management
 

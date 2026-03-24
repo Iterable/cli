@@ -70,9 +70,14 @@ async function main(): Promise<void> {
   }
 
   const config = await loadCliConfig();
+  const debug =
+    process.env.ITERABLE_DEBUG === "true" ||
+    process.env.ITERABLE_DEBUG_VERBOSE === "true";
   const client = new IterableClient({
     apiKey: config.apiKey,
     baseUrl: config.baseUrl,
+    debug,
+    debugVerbose: process.env.ITERABLE_DEBUG_VERBOSE === "true",
   });
 
   try {
