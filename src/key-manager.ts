@@ -1113,6 +1113,9 @@ export class KeyManager {
   /** Deactivate all keys (no key will be active). */
   async deactivateAllKeys(): Promise<void> {
     if (!this.store) {
+      await this.initialize();
+    }
+    if (!this.store) {
       throw new Error("Key store not initialized");
     }
     this.store.keys.forEach((k) => {

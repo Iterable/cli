@@ -64,9 +64,18 @@ interface TableData {
   metadata: Record<string, unknown>;
 }
 
+function isObjectArray(value: unknown): value is Record<string, unknown>[] {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    typeof value[0] === "object" &&
+    value[0] !== null
+  );
+}
+
 function findTableData(data: unknown): TableData | null {
-  if (Array.isArray(data)) return { rows: data, metadata: {} };
-  if (data && typeof data === "object") {
+  if (isObjectArray(data)) return { rows: data, metadata: {} };
+  if (data && typeof data === "object" && !Array.isArray(data)) {
     const entries = Object.entries(data as Record<string, unknown>);
     for (const [arrayKey, value] of entries) {
       if (Array.isArray(value)) {

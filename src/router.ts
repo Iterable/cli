@@ -90,12 +90,8 @@ export function parseArgs(argv: string[]): ParsedArgs {
   return { category, action, rest, globalFlags };
 }
 
-function getVersion(): string {
-  return PACKAGE_VERSION;
-}
-
 export function showVersion(): void {
-  console.log(`${COMMAND_NAME} ${getVersion()}`);
+  console.log(`${COMMAND_NAME} ${PACKAGE_VERSION}`);
 }
 
 interface KeyInfo {
@@ -125,7 +121,7 @@ async function getKeyInfo(): Promise<KeyInfo> {
 }
 
 export async function showGlobalHelp(): Promise<void> {
-  const version = getVersion();
+  const version = PACKAGE_VERSION;
   const categories = getCategories();
   const keyInfo = await getKeyInfo();
 
@@ -193,7 +189,7 @@ export async function showGlobalHelp(): Promise<void> {
     theme.bold("GLOBAL OPTIONS"),
     `  ${theme.accent("--help, -h")}        Show help`,
     `  ${theme.accent("--version, -V")}     Show version`,
-    `  ${theme.accent("--output")} <fmt>    Output format: ${OUTPUT_FORMATS.join(", ")} (default: pretty)`,
+    `  ${theme.accent("--output")} <fmt>    Output format: ${OUTPUT_FORMATS.join(", ")} (default: pretty in TTY, json when piped)`,
     `  ${theme.accent("--columns")} <cols>  Columns to show in table output (comma-separated)`,
     `  ${theme.accent("--json")} <data>     Pass raw JSON — bypasses all other flags (use '-' for stdin)`,
     `  ${theme.accent("--file")} <path>    Read JSON input from a file`,

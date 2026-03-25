@@ -90,4 +90,22 @@ describe("parseArgs", () => {
     expect(result.globalFlags.help).toBe(true);
     expect(result.action).toBeNull();
   });
+
+  it("extracts --force flag", () => {
+    const result = parseArgs(["--force", "lists", "delete", "123"]);
+    expect(result.globalFlags.force).toBe(true);
+    expect(result.category).toBe("lists");
+  });
+
+  it("extracts -f shorthand", () => {
+    const result = parseArgs(["-f", "lists", "delete"]);
+    expect(result.globalFlags.force).toBe(true);
+  });
+
+  it("extracts --file flag", () => {
+    const result = parseArgs(["--file", "data.json", "users", "bulk-update"]);
+    expect(result.globalFlags.file).toBe("data.json");
+    expect(result.category).toBe("users");
+    expect(result.action).toBe("bulk-update");
+  });
 });

@@ -11,7 +11,7 @@ pnpm build
 
 ## Architecture
 
-The CLI is a thin layer over the `[@iterable/api](https://github.com/Iterable/api-client)` client. Each command maps a Zod schema from the client package to CLI arguments and calls one client method.
+The CLI is a thin layer over the [@iterable/api](https://github.com/Iterable/api-client) client. Each command maps a Zod schema from the client package to CLI arguments and calls one client method.
 
 ### Request flow
 

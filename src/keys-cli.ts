@@ -73,7 +73,7 @@ async function saveKeyInteractive(
       return key;
     }
 
-    const { activateNow } = await inquirer.prompt([
+    const { activateNow } = await inquirer.prompt<{ activateNow: boolean }>([
       {
         type: "confirm",
         name: "activateNow",
@@ -81,9 +81,8 @@ async function saveKeyInteractive(
         default: !isUpdate,
       },
     ]);
-    const shouldActivate = activateNow as boolean;
 
-    if (shouldActivate) {
+    if (activateNow) {
       await keyManager.setActiveKey(key.id);
       showSuccess(`"${key.name}" is now your active API key`);
       const updatedKey = await keyManager.getKeyMetadata(key.id);
@@ -194,7 +193,7 @@ async function saveKeyInteractive(
     return true;
   };
 
-  const { name } = await inquirer.prompt([
+  const { name } = await inquirer.prompt<{ name: string }>([
     {
       type: "input",
       name: "name",
@@ -213,13 +212,8 @@ async function saveKeyInteractive(
   try {
     const id =
       isUpdate && existingKey
-        ? await keyManager.updateKey(
-            existingKey.id,
-            name as string,
-            apiKey,
-            baseUrl
-          )
-        : await keyManager.addKey(name as string, apiKey, baseUrl);
+        ? await keyManager.updateKey(existingKey.id, name, apiKey, baseUrl)
+        : await keyManager.addKey(name, apiKey, baseUrl);
 
     spinner.succeed(
       isUpdate
@@ -229,7 +223,7 @@ async function saveKeyInteractive(
 
     const w = 12;
     console.log();
-    console.log(`  ${"Name:".padEnd(w)} ${chalk.white.bold(name as string)}`);
+    console.log(`  ${"Name:".padEnd(w)} ${chalk.white.bold(name)}`);
     console.log(`  ${"ID:".padEnd(w)} ${chalk.gray(id)}`);
     console.log(`  ${"Endpoint:".padEnd(w)} ${linkColor()(baseUrl)}`);
     console.log();
@@ -442,7 +436,9 @@ export async function handleKeysCommand(args: string[]): Promise<void> {
       }
 
       if (keyToDelete.isActive && otherKeys.length > 0) {
-        const { newActiveKey } = await inquirer.prompt([
+        const { newActiveKey } = await inquirer.prompt<{
+          newActiveKey: string;
+        }>([
           {
             type: "list" as const,
             name: "newActiveKey",
@@ -457,7 +453,7 @@ export async function handleKeysCommand(args: string[]): Promise<void> {
           },
         ]);
         if (newActiveKey !== "none") {
-          await keyManager.setActiveKey(newActiveKey as string);
+          await keyManager.setActiveKey(newActiveKey);
           const activated = otherKeys.find((k) => k.id === newActiveKey);
           if (activated) {
             showSuccess(`Switched to "${activated.name}"`);

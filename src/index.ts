@@ -17,6 +17,11 @@ import {
 } from "./router.js";
 import { COMMAND_NAME } from "./utils/command-info.js";
 
+const CLI_PAGINATION_DEFAULTS: Record<string, number> = {
+  page: 1,
+  pageSize: 10,
+};
+
 async function main(): Promise<void> {
   const parsed = parseArgs(process.argv.slice(2));
 
@@ -95,10 +100,6 @@ async function main(): Promise<void> {
       command.cliTransforms
     );
 
-    const CLI_PAGINATION_DEFAULTS: Record<string, number> = {
-      page: 1,
-      pageSize: 10,
-    };
     const schemaKeys =
       command.schema instanceof z.ZodObject
         ? new Set(Object.keys(command.schema.shape))

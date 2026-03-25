@@ -5,8 +5,6 @@ import { detectBackground } from "./detect-background.js";
 const mode = detectBackground();
 
 export const theme = {
-  mode,
-
   key: mode === "dark" ? chalk.hex("#7DD3FC") : chalk.hex("#0369A1"),
   value: mode === "dark" ? chalk.hex("#86EFAC") : chalk.green,
   number: mode === "dark" ? chalk.hex("#FDE68A") : chalk.yellow,
