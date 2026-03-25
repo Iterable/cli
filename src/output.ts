@@ -18,7 +18,7 @@ export function formatOutput(
     case "json":
       return JSON.stringify(data, null, 2);
     case "pretty":
-      return colorizeJson(JSON.stringify(data, null, 2));
+      return colorizeJson(data);
     case "table":
       return formatTable(data, columns);
     default: {
@@ -28,33 +28,34 @@ export function formatOutput(
   }
 }
 
-function colorizeJson(json: string): string {
-  return json
-    .replace(
-      /("(?:[^"\\]|\\.)*")\s*:/g,
-      (_match, key: string) => `${theme.key(key)}:`
-    )
-    .replace(
-      /:\s*("(?:[^"\\]|\\.)*")/g,
-      (_match, value: string) => `: ${theme.value(value)}`
-    )
-    .replace(
-      /:\s*(\d+(?:\.\d+)?)/g,
-      (_match, num: string) => `: ${theme.number(num)}`
-    )
-    .replace(
-      /:\s*(true|false)/g,
-      (_match, bool: string) => `: ${theme.boolean(bool)}`
-    )
-    .replace(/:\s*(null)/g, () => `: ${theme.muted("null")}`)
-    .replace(
-      /(?<=[[,])\s*("(?:[^"\\]|\\.)*")/g,
-      (_match, str: string) => ` ${theme.value(str)}`
-    )
-    .replace(
-      /(?<=[[,])\s*(\d+(?:\.\d+)?)\b/g,
-      (_match, num: string) => ` ${theme.number(num)}`
+function colorizeJson(data: unknown, indent = 0): string {
+  const pad = "  ".repeat(indent);
+  const pad1 = "  ".repeat(indent + 1);
+
+  if (data === null) return theme.muted("null");
+  if (typeof data === "boolean") return theme.boolean(String(data));
+  if (typeof data === "number") return theme.number(String(data));
+  if (typeof data === "string") return theme.value(JSON.stringify(data));
+
+  if (Array.isArray(data)) {
+    if (data.length === 0) return "[]";
+    const items = data.map(
+      (item) => `${pad1}${colorizeJson(item, indent + 1)}`
     );
+    return `[\n${items.join(",\n")}\n${pad}]`;
+  }
+
+  if (typeof data === "object") {
+    const entries = Object.entries(data as Record<string, unknown>);
+    if (entries.length === 0) return "{}";
+    const lines = entries.map(
+      ([key, val]) =>
+        `${pad1}${theme.key(JSON.stringify(key))}: ${colorizeJson(val, indent + 1)}`
+    );
+    return `{\n${lines.join(",\n")}\n${pad}}`;
+  }
+
+  return String(data);
 }
 
 function findTableData(data: unknown): unknown[] | null {
