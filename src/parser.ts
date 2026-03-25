@@ -22,7 +22,27 @@ function getSchemaShape(schema: z.ZodType): Record<string, z.ZodType> {
   return {};
 }
 
-function canZodOptsHandle(fieldSchema: z.ZodType): boolean {
+/**
+ * zod-opts supports z.array(z.string()) and z.array(z.number()) but not
+ * z.array(z.enum([...])). For those, substitute z.array(z.string()) so
+ * the CLI accepts space-separated values. The final schema.parse() in
+ * parseCommand validates the enum values.
+ */
+function coerceForZodOpts(fieldSchema: z.ZodType): z.ZodType {
+  const inner = unwrapSchema(fieldSchema);
+  if (inner instanceof z.ZodArray) {
+    const element = unwrapSchema(inner.element as z.ZodType);
+    if (element instanceof z.ZodEnum) {
+      const coerced = z.array(z.string());
+      return fieldSchema instanceof z.ZodOptional
+        ? coerced.optional()
+        : coerced;
+    }
+  }
+  return fieldSchema;
+}
+
+function zodOptsProbe(fieldSchema: z.ZodType): boolean {
   try {
     parser()
       .options({ _probe: { type: fieldSchema.optional() } })
@@ -32,6 +52,12 @@ function canZodOptsHandle(fieldSchema: z.ZodType): boolean {
     const msg = e instanceof Error ? e.message : String(e);
     return !msg.includes("Unsupported zod type");
   }
+}
+
+function canZodOptsHandle(fieldSchema: z.ZodType): boolean {
+  if (zodOptsProbe(fieldSchema)) return true;
+  const coerced = coerceForZodOpts(fieldSchema);
+  return coerced !== fieldSchema && zodOptsProbe(coerced);
 }
 
 // Only return scalar defaults for display in --help and COMMANDS.md.
@@ -218,7 +244,7 @@ export function buildParser(
     } else {
       const fieldSchema = shape[field.name];
       if (fieldSchema) {
-        options[field.name] = { type: fieldSchema };
+        options[field.name] = { type: coerceForZodOpts(fieldSchema) };
       }
     }
   }

@@ -59,14 +59,14 @@
     "update-commands": "node scripts/update-commands.js"
   },
   "dependencies": {
-    "@iterable/api": "0.9.1",
+    "@iterable/api": "0.10.0",
     "@primno/dpapi": "2.0.1",
     "boxen": "8.0.1",
     "chalk": "5.6.2",
     "cli-table3": "0.6.5",
     "inquirer": "13.3.2",
     "ora": "9.3.0",
-    "zod": "4.1.11",
+    "zod": "4.3.6",
     "zod-opts": "1.0.0"
   },
   "devDependencies": {

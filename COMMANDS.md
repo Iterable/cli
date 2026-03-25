@@ -144,6 +144,7 @@ Retrieve campaigns
 
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
+| `--campaignState` | enum[] | no | Filter campaigns by state. Can specify multiple states. Valid states: Draft, Ready, Scheduled, Running, Finished, Starting, Aborted, Recurring, Archived |
 | `--order` | `asc` \| `desc` | no | Sort direction (asc or desc) |
 | `--page` | number | no | Page number (starting at 1) |
 | `--pageSize` | number | no | Number of results to return per page (defaults to 20, maximum of 1000) |
