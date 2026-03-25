@@ -84,8 +84,6 @@ export interface ApiKeyMetadata {
   updated?: string;
   /** Whether this is the currently active key */
   isActive: boolean;
-  /** Optional per-key environment overrides (extensible for future vars) */
-  env?: Record<string, string>;
   /** API key value (only present when not using Keychain storage) */
   apiKey?: string;
   /** Encrypted API key (Windows DPAPI) */
@@ -612,7 +610,6 @@ export class KeyManager {
    * @param name - User-friendly name for the key
    * @param apiKey - The Iterable API key value
    * @param baseUrl - Iterable API base URL
-   * @param envOverrides - Environment variable overrides. If undefined, keeps existing env (update) or no env (add). If provided (even empty {}), replaces/clears env.
    * @param idOrName - If provided, updates the existing key with this ID or name
    * @returns The ID of the saved key
    */
@@ -620,7 +617,6 @@ export class KeyManager {
     name: string,
     apiKey: string,
     baseUrl: string,
-    envOverrides?: Record<string, string>,
     idOrName?: string
   ): Promise<string> {
     if (!this.store) {
@@ -673,7 +669,6 @@ export class KeyManager {
         name,
         baseUrl,
         updated: new Date().toISOString(),
-        ...(envOverrides !== undefined ? { env: envOverrides } : {}),
       };
     } else {
       metadata = {
@@ -682,7 +677,6 @@ export class KeyManager {
         baseUrl,
         created: new Date().toISOString(),
         isActive: this.store.keys.length === 0,
-        ...(envOverrides !== undefined ? { env: envOverrides } : {}),
       };
     }
 
@@ -758,30 +752,23 @@ export class KeyManager {
    * @param name - User-friendly name for the key (must be unique)
    * @param apiKey - 32-character lowercase hexadecimal Iterable API key
    * @param baseUrl - Iterable API base URL (must be HTTPS)
-   * @param envOverrides - Optional environment variable overrides for this key
    * @returns The unique ID generated for this key
    * @throws {Error} If the key name already exists, validation fails, or storage fails
    */
-  async addKey(
-    name: string,
-    apiKey: string,
-    baseUrl: string,
-    envOverrides?: Record<string, string>
-  ): Promise<string> {
+  async addKey(name: string, apiKey: string, baseUrl: string): Promise<string> {
     await this.ensureStore();
-    return this.saveKey(name, apiKey, baseUrl, envOverrides);
+    return this.saveKey(name, apiKey, baseUrl);
   }
 
   /**
    * Update an existing API key
    *
-   * Updates all properties of an existing key including name, API key value, base URL, and environment overrides.
+   * Updates all properties of an existing key including name, API key value, and base URL.
    *
    * @param idOrName - The unique ID or name of the key to update
    * @param name - New name for the key (must be unique unless unchanged)
    * @param apiKey - New API key value (can be the same as existing)
    * @param baseUrl - New Iterable API base URL
-   * @param envOverrides - New environment variable overrides (undefined = keep existing, {} = clear)
    * @returns The ID of the updated key
    * @throws {Error} If the key is not found, name conflict, validation fails, or storage fails
    */
@@ -789,11 +776,10 @@ export class KeyManager {
     idOrName: string,
     name: string,
     apiKey: string,
-    baseUrl: string,
-    envOverrides?: Record<string, string>
+    baseUrl: string
   ): Promise<string> {
     await this.ensureStore();
-    return this.saveKey(name, apiKey, baseUrl, envOverrides, idOrName);
+    return this.saveKey(name, apiKey, baseUrl, idOrName);
   }
 
   /**
@@ -891,12 +877,13 @@ export class KeyManager {
               { cause: error }
             );
           }
-        } else if (keyMeta.apiKey) {
-          // Fallback for legacy keys stored in plaintext on Windows
-          return keyMeta.apiKey;
         } else {
-          logger.error("Key not found in metadata", { id: keyMeta.id });
-          throw new Error(`Key not found in storage for ID ${keyMeta.id}`);
+          logger.error("Key not found in encrypted storage", {
+            id: keyMeta.id,
+          });
+          throw new Error(
+            `Key "${keyMeta.name}" is not encrypted. Run "${COMMAND_NAME} keys update ${keyMeta.name}" to re-enter it securely.`
+          );
         }
 
       default:
@@ -1113,8 +1100,6 @@ export class KeyManager {
           case StorageMethod.DPAPI:
             if (keyMeta.encryptedApiKey) {
               storedKey = await this.decryptWindows(keyMeta.encryptedApiKey);
-            } else if (keyMeta.apiKey) {
-              storedKey = keyMeta.apiKey;
             } else {
               continue;
             }
@@ -1148,8 +1133,5 @@ let keyManagerInstance: KeyManager | null = null;
  * Get the singleton KeyManager instance
  */
 export function getKeyManager(): KeyManager {
-  if (!keyManagerInstance) {
-    keyManagerInstance = new KeyManager();
-  }
-  return keyManagerInstance;
+  return (keyManagerInstance ??= new KeyManager());
 }
