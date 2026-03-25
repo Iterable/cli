@@ -108,4 +108,42 @@ describe("parseArgs", () => {
     expect(result.category).toBe("users");
     expect(result.action).toBe("bulk-update");
   });
+
+  it("extracts --key flag", () => {
+    const result = parseArgs(["--key", "production", "campaigns", "list"]);
+    expect(result.globalFlags.key).toBe("production");
+    expect(result.category).toBe("campaigns");
+  });
+
+  it("extracts -k shorthand", () => {
+    const result = parseArgs(["-k", "staging", "campaigns", "list"]);
+    expect(result.globalFlags.key).toBe("staging");
+  });
+
+  it("handles multiple flags combined", () => {
+    const result = parseArgs([
+      "--force",
+      "--output",
+      "table",
+      "--key",
+      "prod",
+      "--columns",
+      "id,name",
+      "campaigns",
+      "list",
+      "--pageSize",
+      "5",
+    ]);
+    expect(result.globalFlags).toEqual({
+      help: false,
+      version: false,
+      force: true,
+      output: "table",
+      key: "prod",
+      columns: ["id", "name"],
+    });
+    expect(result.category).toBe("campaigns");
+    expect(result.action).toBe("list");
+    expect(result.rest).toEqual(["--pageSize", "5"]);
+  });
 });

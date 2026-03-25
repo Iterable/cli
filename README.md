@@ -119,6 +119,7 @@ See the [full command reference](COMMANDS.md) for all 109 commands with paramete
 | `--columns <cols>` | Comma-separated columns for table output |
 | `--json <data>` | Pass raw JSON (use `-` for stdin) |
 | `--file <path>` | Read JSON input from a file |
+| `--key, -k <name>` | Use a specific stored key (overrides env var and active key) |
 | `--force, -f` | Skip confirmation prompts for destructive commands |
 
 ## Output Formats
@@ -147,8 +148,8 @@ Without `--columns`, all fields are shown.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `ITERABLE_API_KEY` | API key (overrides key manager) | — |
-| `ITERABLE_BASE_URL` | API base URL (overrides key manager) | `https://api.iterable.com` |
+| `ITERABLE_API_KEY` | API key (overrides key manager; `--key` flag takes precedence) | — |
+| `ITERABLE_BASE_URL` | API base URL (used with env var key only) | `https://api.iterable.com` |
 | `ITERABLE_DEBUG` | Enable debug logging (HTTP requests/responses to stderr) | `false` |
 | `ITERABLE_DEBUG_VERBOSE` | Include response bodies in debug output (may contain PII) | `false` |
 

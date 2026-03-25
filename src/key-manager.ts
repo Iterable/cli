@@ -137,6 +137,16 @@ export class KeyManager {
     }
   }
 
+  private async ensureStore(): Promise<KeyStore> {
+    if (!this.store) {
+      await this.initialize();
+    }
+    if (!this.store) {
+      throw new Error("Key store not initialized");
+    }
+    return this.store;
+  }
+
   /**
    * Validate metadata against keychain and clean up orphaned entries (macOS only)
    *
@@ -614,10 +624,6 @@ export class KeyManager {
     idOrName?: string
   ): Promise<string> {
     if (!this.store) {
-      await this.initialize();
-    }
-
-    if (!this.store) {
       throw new Error("Key store not initialized");
     }
 
@@ -762,6 +768,7 @@ export class KeyManager {
     baseUrl: string,
     envOverrides?: Record<string, string>
   ): Promise<string> {
+    await this.ensureStore();
     return this.saveKey(name, apiKey, baseUrl, envOverrides);
   }
 
@@ -785,6 +792,7 @@ export class KeyManager {
     baseUrl: string,
     envOverrides?: Record<string, string>
   ): Promise<string> {
+    await this.ensureStore();
     return this.saveKey(name, apiKey, baseUrl, envOverrides, idOrName);
   }
 
@@ -798,15 +806,9 @@ export class KeyManager {
    * @throws {Error} If the key store is not initialized
    */
   async listKeys(): Promise<ApiKeyMetadata[]> {
-    if (!this.store) {
-      await this.initialize();
-    }
+    const store = await this.ensureStore();
 
-    if (!this.store) {
-      throw new Error("Key store not initialized");
-    }
-
-    return [...this.store.keys];
+    return [...store.keys];
   }
 
   /**
@@ -830,16 +832,10 @@ export class KeyManager {
    * @throws {Error} If storage access fails
    */
   async getKey(idOrName: string): Promise<string | null> {
-    if (!this.store) {
-      await this.initialize();
-    }
-
-    if (!this.store) {
-      throw new Error("Key store not initialized");
-    }
+    const store = await this.ensureStore();
 
     // Find the key metadata
-    const keyMeta = this.store.keys.find(
+    const keyMeta = store.keys.find(
       (k) => k.id === idOrName || k.name === idOrName
     );
 
@@ -923,15 +919,9 @@ export class KeyManager {
    * @throws {Error} If storage access fails
    */
   async getActiveKey(): Promise<string | null> {
-    if (!this.store) {
-      await this.initialize();
-    }
+    const store = await this.ensureStore();
 
-    if (!this.store) {
-      throw new Error("Key store not initialized");
-    }
-
-    const activeKey = this.store.keys.find((k) => k.isActive);
+    const activeKey = store.keys.find((k) => k.isActive);
     if (!activeKey) {
       return null;
     }
@@ -949,15 +939,9 @@ export class KeyManager {
    * @throws {Error} If the key store is not initialized
    */
   async getActiveKeyMetadata(): Promise<ApiKeyMetadata | null> {
-    if (!this.store) {
-      await this.initialize();
-    }
+    const store = await this.ensureStore();
 
-    if (!this.store) {
-      throw new Error("Key store not initialized");
-    }
-
-    return this.store.keys.find((k) => k.isActive) || null;
+    return store.keys.find((k) => k.isActive) || null;
   }
 
   /**
@@ -971,16 +955,10 @@ export class KeyManager {
    * @throws {Error} If the key is not found or the store is not initialized
    */
   async setActiveKey(idOrName: string): Promise<void> {
-    if (!this.store) {
-      await this.initialize();
-    }
-
-    if (!this.store) {
-      throw new Error("Key store not initialized");
-    }
+    const store = await this.ensureStore();
 
     // Find the key
-    const keyMeta = this.store.keys.find(
+    const keyMeta = store.keys.find(
       (k) => k.id === idOrName || k.name === idOrName
     );
 
@@ -989,7 +967,7 @@ export class KeyManager {
     }
 
     // Deactivate all keys
-    this.store.keys.forEach((k) => {
+    store.keys.forEach((k) => {
       k.isActive = false;
     });
 
@@ -1009,22 +987,16 @@ export class KeyManager {
    * @throws {Error} If the key is not found or the store is not initialized
    */
   async deleteKey(id: string): Promise<void> {
-    if (!this.store) {
-      await this.initialize();
-    }
-
-    if (!this.store) {
-      throw new Error("Key store not initialized");
-    }
+    const store = await this.ensureStore();
 
     // Find the key by ID only
-    const index = this.store.keys.findIndex((k) => k.id === id);
+    const index = store.keys.findIndex((k) => k.id === id);
 
     if (index === -1) {
       throw new Error(`Key not found with ID: ${id}`);
     }
 
-    const keyMeta = this.store.keys[index];
+    const keyMeta = store.keys[index];
     if (!keyMeta) {
       throw new Error(`Key not found with ID: ${id}`);
     }
@@ -1051,7 +1023,7 @@ export class KeyManager {
       }
 
       // Remove from metadata
-      this.store.keys.splice(index, 1);
+      store.keys.splice(index, 1);
       await this.saveMetadata();
 
       if (!keychainDeleted) {
@@ -1073,7 +1045,7 @@ export class KeyManager {
       }
     } else {
       // Windows/Linux: Just remove from JSON
-      this.store.keys.splice(index, 1);
+      store.keys.splice(index, 1);
       await this.saveMetadata();
       logger.debug("API key deleted", { id: keyMeta.id, name: keyMeta.name });
     }
@@ -1088,37 +1060,21 @@ export class KeyManager {
    * @throws {Error} If the key store is not initialized
    */
   async hasKeys(): Promise<boolean> {
-    if (!this.store) {
-      await this.initialize();
-    }
+    const store = await this.ensureStore();
 
-    if (!this.store) {
-      throw new Error("Key store not initialized");
-    }
-
-    return this.store.keys.length > 0;
+    return store.keys.length > 0;
   }
 
   /** Check if any key is currently marked as active (metadata only, no keychain call). */
   async hasActiveKey(): Promise<boolean> {
-    if (!this.store) {
-      await this.initialize();
-    }
-    if (!this.store) {
-      throw new Error("Key store not initialized");
-    }
-    return this.store.keys.some((k) => k.isActive);
+    const store = await this.ensureStore();
+    return store.keys.some((k) => k.isActive);
   }
 
   /** Deactivate all keys (no key will be active). */
   async deactivateAllKeys(): Promise<void> {
-    if (!this.store) {
-      await this.initialize();
-    }
-    if (!this.store) {
-      throw new Error("Key store not initialized");
-    }
-    this.store.keys.forEach((k) => {
+    const store = await this.ensureStore();
+    store.keys.forEach((k) => {
       k.isActive = false;
     });
     await this.saveMetadata();
@@ -1135,16 +1091,10 @@ export class KeyManager {
    * @throws {Error} If storage access fails
    */
   async findKeyByValue(apiKeyValue: string): Promise<ApiKeyMetadata | null> {
-    if (!this.store) {
-      await this.initialize();
-    }
-
-    if (!this.store) {
-      throw new Error("Key store not initialized");
-    }
+    const store = await this.ensureStore();
 
     // Check each key to see if the value matches
-    for (const keyMeta of this.store.keys) {
+    for (const keyMeta of store.keys) {
       try {
         let storedKey: string;
 

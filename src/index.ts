@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { IterableClient } from "@iterable/api";
+import chalk from "chalk";
 import { readFileSync } from "fs";
 import { z } from "zod";
 
@@ -42,7 +43,8 @@ async function main(): Promise<void> {
   if (parsed.category === "keys") {
     const { handleKeysCommand } = await import("./keys-cli.js");
     await handleKeysCommand(
-      parsed.action ? [parsed.action, ...parsed.rest] : []
+      parsed.action ? [parsed.action, ...parsed.rest] : [],
+      parsed.globalFlags.key
     );
     return;
   }
@@ -74,7 +76,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  const config = await loadCliConfig();
+  const config = await loadCliConfig(parsed.globalFlags.key);
   const debug =
     process.env.ITERABLE_DEBUG === "true" ||
     process.env.ITERABLE_DEBUG_VERBOSE === "true";
@@ -151,52 +153,41 @@ main().catch(async (error: unknown) => {
     IterableResponseValidationError,
   } = await import("@iterable/api");
 
-  /* eslint-disable no-console */
+  const err = (msg: string) => console.error(chalk.red(`✖ ${msg}`)); // eslint-disable-line no-console
+  const hint = (msg: string) => console.error(chalk.dim(`  ${msg}`)); // eslint-disable-line no-console
+
   if (error instanceof CliError) {
-    console.error(error.message);
+    err(error.message);
     process.exit(error.exitCode);
   }
 
   if (error instanceof z.ZodError) {
-    const details = error.issues
-      .map((i) => `${i.path.join(".")}: ${i.message}`)
-      .join(", ");
-    console.error(`Validation error: ${details}`);
+    err("Validation error");
+    for (const issue of error.issues) {
+      hint(`${issue.path.join(".")}: ${issue.message}`);
+    }
     process.exit(2);
   }
 
-  if (error instanceof IterableApiError) {
-    console.error(`API error (${error.statusCode}): ${error.message}`);
-    if (error.endpoint) console.error(`  Endpoint: ${error.endpoint}`);
-    if (error.statusCode === 401) {
-      console.error(
-        `  Run '${COMMAND_NAME} keys add' to configure your API key`
-      );
+  if (
+    error instanceof IterableApiError ||
+    error instanceof IterableRawError ||
+    error instanceof IterableResponseValidationError
+  ) {
+    err(`${error.message} (${error.statusCode})`);
+    if (error.endpoint) hint(`Endpoint: ${error.endpoint}`);
+    if (error instanceof IterableApiError && error.statusCode === 401) {
+      hint(`Run '${COMMAND_NAME} keys add' to configure your API key`);
     }
     process.exit(1);
   }
 
-  if (error instanceof IterableRawError) {
-    console.error(`API error (${error.statusCode}): ${error.message}`);
-    if (error.endpoint) console.error(`  Endpoint: ${error.endpoint}`);
-    process.exit(1);
-  }
-
-  if (error instanceof IterableResponseValidationError) {
-    console.error(
-      `Response validation error (${error.statusCode}): ${error.message}`
-    );
-    if (error.endpoint) console.error(`  Endpoint: ${error.endpoint}`);
-    process.exit(1);
-  }
-
   if (error instanceof IterableNetworkError) {
-    console.error(`Network error: ${error.message}`);
+    err(error.message);
     process.exit(1);
   }
-  /* eslint-enable no-console */
 
   const msg = error instanceof Error ? error.message : String(error);
-  console.error(`Error: ${msg}`); // eslint-disable-line no-console
+  err(msg);
   process.exit(1);
 });

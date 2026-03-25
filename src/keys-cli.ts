@@ -254,9 +254,18 @@ async function saveKeyInteractive(
 }
 
 /** Handle `iterable keys <subcommand>` */
-export async function handleKeysCommand(args: string[]): Promise<void> {
+export async function handleKeysCommand(
+  args: string[],
+  keyOverride?: string
+): Promise<void> {
   const subCommand = args[0];
   const positionalArgs = args.filter((arg) => !arg.startsWith("--"));
+
+  if (keyOverride && subCommand !== "validate") {
+    showInfo(
+      `--key is only used with 'keys validate'; ignoring for 'keys ${subCommand ?? ""}'.`
+    );
+  }
 
   const spinner = await getSpinner();
   const keyManager = getKeyManager();
@@ -287,9 +296,6 @@ export async function handleKeysCommand(args: string[]): Promise<void> {
           { icon: icons.key, theme: "info" }
         );
       } else {
-        showSection("Stored API Keys", icons.key);
-        console.log();
-
         const table = createTable({
           head: ["Name", "ID", "Endpoint", "Modified", "Status"],
           style: "normal",
@@ -318,19 +324,6 @@ export async function handleKeysCommand(args: string[]): Promise<void> {
         }
 
         console.log(table.toString());
-        console.log();
-
-        showBox(
-          "Key Management",
-          [
-            ...KEYS_COMMAND_TABLE.map(
-              ([cmd, desc]) => `${chalk.cyan(cmd)} - ${chalk.gray(desc)}`
-            ),
-            "",
-            getKeyStorageMessage(),
-          ],
-          { icon: icons.key, theme: "info", padding: 1 }
-        );
       }
       break;
     }
@@ -474,7 +467,7 @@ export async function handleKeysCommand(args: string[]): Promise<void> {
     case "validate": {
       spinner.start("Validating API connection...");
       try {
-        const config = await loadCliConfig();
+        const config = await loadCliConfig(keyOverride);
         const debug =
           process.env.ITERABLE_DEBUG === "true" ||
           process.env.ITERABLE_DEBUG_VERBOSE === "true";
@@ -488,7 +481,11 @@ export async function handleKeysCommand(args: string[]): Promise<void> {
           await client.getUserFields();
           spinner.succeed("API connection successful");
           const w = 12;
-          if (process.env.ITERABLE_API_KEY) {
+          if (keyOverride) {
+            console.log(
+              `  ${"Key:".padEnd(w)} ${chalk.white.bold(keyOverride)}`
+            );
+          } else if (process.env.ITERABLE_API_KEY) {
             console.log(
               `  ${"Source:".padEnd(w)} ${chalk.white("ITERABLE_API_KEY environment variable")}`
             );
@@ -507,7 +504,9 @@ export async function handleKeysCommand(args: string[]): Promise<void> {
         }
       } catch (error: unknown) {
         spinner.fail("API connection failed");
-        if (process.env.ITERABLE_API_KEY) {
+        if (keyOverride) {
+          showInfo(`Key: ${keyOverride}`);
+        } else if (process.env.ITERABLE_API_KEY) {
           showInfo("Source: ITERABLE_API_KEY environment variable");
         } else {
           const activeMeta = await keyManager

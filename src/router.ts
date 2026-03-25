@@ -21,6 +21,7 @@ export interface GlobalFlags {
   output?: OutputFormat;
   columns?: string[];
   file?: string;
+  key?: string;
 }
 
 export interface ParsedArgs {
@@ -28,6 +29,77 @@ export interface ParsedArgs {
   action: string | null;
   rest: string[];
   globalFlags: GlobalFlags;
+}
+
+interface FlagDef {
+  aliases: string[];
+  takesValue: boolean;
+  apply: (flags: GlobalFlags, value: string) => void;
+}
+
+const FLAG_DEFS: FlagDef[] = [
+  {
+    aliases: ["--help", "-h"],
+    takesValue: false,
+    apply: (f) => {
+      f.help = true;
+    },
+  },
+  {
+    aliases: ["--version", "-V"],
+    takesValue: false,
+    apply: (f) => {
+      f.version = true;
+    },
+  },
+  {
+    aliases: ["--force", "-f"],
+    takesValue: false,
+    apply: (f) => {
+      f.force = true;
+    },
+  },
+  {
+    aliases: ["--output"],
+    takesValue: true,
+    apply: (f, value) => {
+      if (!(OUTPUT_FORMATS as readonly string[]).includes(value)) {
+        console.error(
+          `Invalid output format: ${value}. Use: ${OUTPUT_FORMATS.join(", ")}`
+        );
+        process.exit(2);
+      }
+      f.output = value as OutputFormat;
+    },
+  },
+  {
+    aliases: ["--key", "-k"],
+    takesValue: true,
+    apply: (f, value) => {
+      f.key = value;
+    },
+  },
+  {
+    aliases: ["--file"],
+    takesValue: true,
+    apply: (f, value) => {
+      f.file = value;
+    },
+  },
+  {
+    aliases: ["--columns"],
+    takesValue: true,
+    apply: (f, value) => {
+      f.columns = value.split(",").map((s) => s.trim());
+    },
+  },
+];
+
+const FLAGS_BY_ALIAS = new Map<string, FlagDef>();
+for (const def of FLAG_DEFS) {
+  for (const alias of def.aliases) {
+    FLAGS_BY_ALIAS.set(alias, def);
+  }
 }
 
 export function parseArgs(argv: string[]): ParsedArgs {
@@ -40,54 +112,33 @@ export function parseArgs(argv: string[]): ParsedArgs {
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i] ?? "";
-    if (arg === "--help" || arg === "-h") {
-      globalFlags.help = true;
-    } else if (arg === "--version" || arg === "-V") {
-      globalFlags.version = true;
-    } else if (arg === "--output" && i + 1 < argv.length) {
-      i++;
-      const value = argv[i] ?? "";
-      if (value.startsWith("-")) {
-        console.error("--output requires a value (json, pretty, or table)");
-        process.exit(2);
-      }
-      if (!(OUTPUT_FORMATS as readonly string[]).includes(value)) {
-        console.error(
-          `Invalid output format: ${value}. Use: ${OUTPUT_FORMATS.join(", ")}`
-        );
-        process.exit(2);
-      }
-      globalFlags.output = value as OutputFormat;
-    } else if (arg === "--force" || arg === "-f") {
-      globalFlags.force = true;
-    } else if (arg === "--file" && i + 1 < argv.length) {
-      i++;
-      const value = argv[i] ?? "";
-      if (value.startsWith("-")) {
-        console.error("--file requires a file path");
-        process.exit(2);
-      }
-      globalFlags.file = value;
-    } else if (arg === "--columns" && i + 1 < argv.length) {
-      i++;
-      const value = argv[i] ?? "";
-      if (value.startsWith("-")) {
-        console.error(
-          "--columns requires a value (comma-separated column names)"
-        );
-        process.exit(2);
-      }
-      globalFlags.columns = value.split(",").map((s) => s.trim());
-    } else {
+    const def = FLAGS_BY_ALIAS.get(arg);
+
+    if (!def) {
       remaining.push(arg);
+      continue;
     }
+
+    if (!def.takesValue) {
+      def.apply(globalFlags, "");
+      continue;
+    }
+
+    const value = argv[i + 1];
+    if (!value || value.startsWith("-")) {
+      console.error(`${arg} requires a value`);
+      process.exit(2);
+    }
+    i++;
+    def.apply(globalFlags, value);
   }
 
-  const category = remaining[0] ?? null;
-  const action = remaining[1] ?? null;
-  const rest = remaining.slice(2);
-
-  return { category, action, rest, globalFlags };
+  return {
+    category: remaining[0] ?? null,
+    action: remaining[1] ?? null,
+    rest: remaining.slice(2),
+    globalFlags,
+  };
 }
 
 export function showVersion(): void {
@@ -186,14 +237,15 @@ export async function showGlobalHelp(): Promise<void> {
 
   lines.push(
     "",
-    theme.bold("GLOBAL OPTIONS"),
-    `  ${theme.accent("--help, -h")}        Show help`,
-    `  ${theme.accent("--version, -V")}     Show version`,
-    `  ${theme.accent("--output")} <fmt>    Output format: ${OUTPUT_FORMATS.join(", ")} (default: pretty in TTY, json when piped)`,
-    `  ${theme.accent("--columns")} <cols>  Columns to show in table output (comma-separated)`,
-    `  ${theme.accent("--json")} <data>     Pass raw JSON — bypasses all other flags (use '-' for stdin)`,
-    `  ${theme.accent("--file")} <path>    Read JSON input from a file`,
-    `  ${theme.accent("--force, -f")}      Skip confirmation prompts for destructive commands`,
+    theme.bold("OPTIONS"),
+    `  ${theme.accent("--help, -h")}         Show help`,
+    `  ${theme.accent("--version, -V")}      Show version`,
+    `  ${theme.accent("--output")} <fmt>     Output format: ${OUTPUT_FORMATS.join(", ")} (default: pretty in TTY, json when piped)`,
+    `  ${theme.accent("--columns")} <cols>   Columns to show in table output (comma-separated)`,
+    `  ${theme.accent("--json")} <data>      Pass raw JSON — bypasses all other flags (use '-' for stdin)`,
+    `  ${theme.accent("--file")} <path>      Read JSON input from a file`,
+    `  ${theme.accent("--key, -k")} <name>   Use a specific stored key (overrides env var and active key)`,
+    `  ${theme.accent("--force, -f")}        Skip confirmation prompts for destructive commands`,
     "",
     theme.bold("KEY MANAGEMENT")
   );
