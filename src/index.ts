@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 
-import { IterableClient } from "@iterable/api";
 import chalk from "chalk";
 import { readFileSync } from "fs";
 import { z } from "zod";
 
-import { loadCliConfig } from "./config.js";
+import { createClient, loadCliConfig } from "./config.js";
 import { CliError, UsageError } from "./errors.js";
 import { formatOutput, getDefaultFormat } from "./output.js";
 import { buildParser, parseCommand } from "./parser.js";
@@ -77,15 +76,7 @@ async function main(): Promise<void> {
   }
 
   const config = await loadCliConfig(parsed.globalFlags.key);
-  const debug =
-    process.env.ITERABLE_DEBUG === "true" ||
-    process.env.ITERABLE_DEBUG_VERBOSE === "true";
-  const client = new IterableClient({
-    apiKey: config.apiKey,
-    baseUrl: config.baseUrl,
-    debug,
-    debugVerbose: process.env.ITERABLE_DEBUG_VERBOSE === "true",
-  });
+  const client = createClient(config);
 
   try {
     let restArgs = parsed.rest;

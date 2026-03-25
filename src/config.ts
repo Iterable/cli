@@ -1,14 +1,27 @@
-import { logger } from "@iterable/api";
+import { IterableClient, logger } from "@iterable/api";
 
 import { CliError } from "./errors.js";
 import { getKeyManager } from "./key-manager.js";
 import { isTestEnv } from "./utils/cli-env.js";
-import { COMMAND_NAME } from "./utils/command-info.js";
+import { COMMAND_NAME, PACKAGE_VERSION } from "./utils/command-info.js";
 import { sanitizeString } from "./utils/sanitize.js";
 
 export interface CliConfig {
   readonly apiKey: string;
   readonly baseUrl: string;
+}
+
+export function createClient(config: CliConfig): IterableClient {
+  const debug =
+    process.env.ITERABLE_DEBUG === "true" ||
+    process.env.ITERABLE_DEBUG_VERBOSE === "true";
+  return new IterableClient({
+    apiKey: config.apiKey,
+    baseUrl: config.baseUrl,
+    debug,
+    debugVerbose: process.env.ITERABLE_DEBUG_VERBOSE === "true",
+    customHeaders: { "User-Agent": `iterable-cli/${PACKAGE_VERSION}` },
+  });
 }
 
 /**

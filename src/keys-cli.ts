@@ -1,9 +1,8 @@
 /* eslint-disable no-console */
-import { IterableClient } from "@iterable/api";
 import chalk from "chalk";
 import inquirer from "inquirer";
 
-import { loadCliConfig } from "./config.js";
+import { createClient, loadCliConfig } from "./config.js";
 import type { ApiKeyMetadata, KeyManager } from "./key-manager.js";
 import { getKeyManager } from "./key-manager.js";
 import { getSpinner, isTestEnv } from "./utils/cli-env.js";
@@ -468,15 +467,7 @@ export async function handleKeysCommand(
       spinner.start("Validating API connection...");
       try {
         const config = await loadCliConfig(keyOverride);
-        const debug =
-          process.env.ITERABLE_DEBUG === "true" ||
-          process.env.ITERABLE_DEBUG_VERBOSE === "true";
-        const client = new IterableClient({
-          apiKey: config.apiKey,
-          baseUrl: config.baseUrl,
-          debug,
-          debugVerbose: process.env.ITERABLE_DEBUG_VERBOSE === "true",
-        });
+        const client = createClient(config);
         try {
           await client.getUserFields();
           spinner.succeed("API connection successful");
