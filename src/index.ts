@@ -95,6 +95,20 @@ async function main(): Promise<void> {
       command.cliTransforms
     );
 
+    const CLI_PAGINATION_DEFAULTS: Record<string, number> = {
+      page: 1,
+      pageSize: 10,
+    };
+    const schemaKeys =
+      command.schema instanceof z.ZodObject
+        ? new Set(Object.keys(command.schema.shape))
+        : new Set<string>();
+    for (const [key, defaultVal] of Object.entries(CLI_PAGINATION_DEFAULTS)) {
+      if (schemaKeys.has(key)) {
+        params[key] ??= defaultVal;
+      }
+    }
+
     if (
       command.destructive &&
       !parsed.globalFlags.force &&
@@ -117,8 +131,12 @@ async function main(): Promise<void> {
 
     const result = await command.execute(client, params);
 
-    const format = parsed.globalFlags.output ?? getDefaultFormat();
-    console.log(formatOutput(result, format, parsed.globalFlags.columns)); // eslint-disable-line no-console
+    const format =
+      parsed.globalFlags.output ??
+      (parsed.globalFlags.columns ? "table" : getDefaultFormat());
+    console.log(
+      formatOutput(result, format, parsed.globalFlags.columns, params)
+    ); // eslint-disable-line no-console
   } finally {
     client.destroy();
   }
