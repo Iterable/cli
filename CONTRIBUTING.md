@@ -63,10 +63,7 @@ pnpm test:unit         # Parser, router, commands registry, key manager — no n
 pnpm test:integration  # Calls the real Iterable API (needs ITERABLE_API_KEY)
 pnpm test:e2e          # Spawns the CLI binary as a subprocess
 pnpm test              # All of the above (runs build first)
+pnpm check             # Lint, typecheck, format
 ```
 
 Integration and E2E tests that need an API key are skipped automatically when `ITERABLE_API_KEY` is not set.
-
-## Before Committing
-
-Run `pnpm check` to catch formatting, type, and lint issues.

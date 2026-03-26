@@ -1,10 +1,12 @@
 # Iterable CLI
 
 [![npm version](https://img.shields.io/npm/v/@iterable/cli.svg)](https://www.npmjs.com/package/@iterable/cli)
-
-> **Note:** This is an open-source developer tool, not an officially supported Iterable product. It is provided "as is" under the MIT License with no warranty or support guarantees.
+[![docs](https://img.shields.io/badge/docs-iterable.github.io%2Fcli-blue)](https://iterable.github.io/cli/)
 
 A command-line interface for the [Iterable API](https://api.iterable.com/api/docs). Manage campaigns, templates, users, lists, and more from your terminal.
+
+> **Note:** This is an open-source developer tool, not an officially supported Iterable product. It is provided "as is" under the MIT 
+License with no warranty or support guarantees.
 
 ## Installation
 

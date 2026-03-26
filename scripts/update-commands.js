@@ -21,7 +21,7 @@ function formatType(field) {
 function renderCommand(cmd, category) {
   const lines = [];
   const alias = cmd.isAlias ? " *(alias)*" : "";
-  lines.push(`### ${category} ${cmd.name}${alias}`);
+  lines.push(`### ${cmd.name}${alias}`);
   lines.push("");
   lines.push(cmd.description);
   lines.push("");
@@ -38,26 +38,19 @@ function renderCommand(cmd, category) {
     lines.push("");
   } else {
     const requiredFields = fields.filter((f) => f.required);
-    const placeholders = requiredFields.map((f) => ({
-      field: f,
-      placeholder: generatePlaceholder(f),
-    }));
-    const hasAllPlaceholders = placeholders.every((p) => p.placeholder !== null);
-
-    if (requiredFields.length > 0 && hasAllPlaceholders) {
-      const parts = [`${COMMAND_NAME} ${category} ${cmd.name}`];
-      for (const { field, placeholder } of placeholders) {
-        if (field.isPositional) {
-          parts.push(placeholder);
-        } else {
-          parts.push(`--${field.name} ${placeholder}`);
-        }
+    const parts = [`${COMMAND_NAME} ${category} ${cmd.name}`];
+    for (const f of requiredFields) {
+      const placeholder = generatePlaceholder(f);
+      if (f.isPositional) {
+        parts.push(placeholder);
+      } else {
+        parts.push(`--${f.name} ${placeholder}`);
       }
-      lines.push("```");
-      lines.push(parts.join(" "));
-      lines.push("```");
-      lines.push("");
     }
+    lines.push("```");
+    lines.push(parts.join(" "));
+    lines.push("```");
+    lines.push("");
   }
 
   // Parameter table
@@ -93,7 +86,7 @@ try {
   );
 
   const sections = [
-    `# Available Commands (${totalCount} commands)`,
+    `# Available Commands (${totalCount})`,
     "",
     `All commands follow the pattern: \`${COMMAND_NAME} <category> <command> [options]\``,
     "",
@@ -102,7 +95,7 @@ try {
 
   for (const { category, commands } of commandsByCategory) {
     sections.push("");
-    sections.push(`## ${category} (${commands.length} commands)`);
+    sections.push(`## ${category} (${commands.length})`);
     sections.push("");
     for (const cmd of commands) {
       try {
@@ -110,7 +103,7 @@ try {
       } catch {
         const a = cmd.isAlias ? " *(alias)*" : "";
         sections.push(
-          `### ${category} ${cmd.name}${a}\n\n${cmd.description}\n`
+          `### ${cmd.name}${a}\n\n${cmd.description}\n`
         );
       }
     }
@@ -122,7 +115,7 @@ try {
   sections.push("Manage stored API keys.");
   sections.push("");
   for (const [cmd, desc] of KEYS_COMMAND_TABLE) {
-    sections.push(`### ${cmd.split(" ").slice(1).join(" ")}`);
+    sections.push(`### ${cmd.split(" ").slice(2).join(" ")}`);
     sections.push("");
     sections.push(desc);
     sections.push("");

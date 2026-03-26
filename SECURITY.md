@@ -1,7 +1,5 @@
 # Security Policy
 
-## Reporting Security Vulnerabilities
-
 Iterable is committed to maintaining the security and privacy of our software and customer data. We value the security research community's contributions to identifying and addressing potential vulnerabilities.
 
 If you discover a security vulnerability in this project, please report it in accordance with Iterable's Responsible Disclosure Policy:
