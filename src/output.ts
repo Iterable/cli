@@ -78,7 +78,7 @@ function findTableData(data: unknown): TableData | null {
   if (data && typeof data === "object" && !Array.isArray(data)) {
     const entries = Object.entries(data as Record<string, unknown>);
     for (const [arrayKey, value] of entries) {
-      if (Array.isArray(value)) {
+      if (isObjectArray(value)) {
         const metadata: Record<string, unknown> = {};
         for (const [key, val] of entries) {
           if (key !== arrayKey) metadata[key] = val;

@@ -107,9 +107,7 @@ iterable users delete user@example.com  # routes to delete-by-email
 
 ## Available Commands
 
-See the [full command reference](COMMANDS.md) for all 109 commands with parameter details.
-
-**Categories:** campaigns, catalogs, events, experiments, export, journeys, lists, messaging, snippets, subscriptions, templates, users, webhooks
+See the [full command reference](COMMANDS.md) for all commands with parameter details.
 
 ## Global Options
 

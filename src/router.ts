@@ -4,8 +4,10 @@ import {
   getCategories,
   getCommandsByCategory,
 } from "./commands/registry.js";
+import type { CommandDefinition } from "./commands/types.js";
 import { UsageError } from "./errors.js";
 import { OUTPUT_FORMATS, type OutputFormat } from "./output.js";
+import { describeCommand } from "./parser.js";
 import { isTestEnv } from "./utils/cli-env.js";
 import {
   COMMAND_NAME,
@@ -32,63 +34,83 @@ export interface ParsedArgs {
 }
 
 interface FlagDef {
+  key: string;
   aliases: string[];
   takesValue: boolean;
+  description: string;
+  helpArg?: string;
   apply: (flags: GlobalFlags, value: string) => void;
 }
 
 const FLAG_DEFS: FlagDef[] = [
   {
+    key: "help",
     aliases: ["--help", "-h"],
     takesValue: false,
+    description: "Show help",
     apply: (f) => {
       f.help = true;
     },
   },
   {
+    key: "version",
     aliases: ["--version", "-V"],
     takesValue: false,
+    description: "Show version",
     apply: (f) => {
       f.version = true;
     },
   },
   {
+    key: "force",
     aliases: ["--force", "-f"],
     takesValue: false,
+    description: "Skip confirmation prompts for destructive commands",
     apply: (f) => {
       f.force = true;
     },
   },
   {
+    key: "output",
     aliases: ["--output"],
     takesValue: true,
+    description: `Output format: ${OUTPUT_FORMATS.join(", ")} (default: pretty in TTY, json when piped)`,
+    helpArg: "<fmt>",
     apply: (f, value) => {
       if (!(OUTPUT_FORMATS as readonly string[]).includes(value)) {
-        console.error(
+        throw new UsageError(
           `Invalid output format: ${value}. Use: ${OUTPUT_FORMATS.join(", ")}`
         );
-        process.exit(2);
       }
       f.output = value as OutputFormat;
     },
   },
   {
+    key: "key",
     aliases: ["--key", "-k"],
     takesValue: true,
+    description: "Use a specific stored key (overrides env var and active key)",
+    helpArg: "<name>",
     apply: (f, value) => {
       f.key = value;
     },
   },
   {
+    key: "file",
     aliases: ["--file"],
     takesValue: true,
+    description: "Read JSON input from a file",
+    helpArg: "<path>",
     apply: (f, value) => {
       f.file = value;
     },
   },
   {
+    key: "columns",
     aliases: ["--columns"],
     takesValue: true,
+    description: "Columns to show in table output (comma-separated)",
+    helpArg: "<cols>",
     apply: (f, value) => {
       f.columns = value.split(",").map((s) => s.trim());
     },
@@ -125,9 +147,8 @@ export function parseArgs(argv: string[]): ParsedArgs {
     }
 
     const value = argv[i + 1];
-    if (!value || value.startsWith("-")) {
-      console.error(`${arg} requires a value`);
-      process.exit(2);
+    if (value === undefined || FLAGS_BY_ALIAS.has(value)) {
+      throw new UsageError(`${arg} requires a value`);
     }
     i++;
     def.apply(globalFlags, value);
@@ -169,6 +190,80 @@ async function getKeyInfo(): Promise<KeyInfo> {
   } catch {
     return { status: "none" };
   }
+}
+
+function flagLabel(def: FlagDef): string {
+  const names = def.aliases.join(", ");
+  return def.helpArg ? `${names} ${def.helpArg}` : names;
+}
+
+function formatOptionLines(
+  options: { label: string; desc: string }[]
+): string[] {
+  if (options.length === 0) return [];
+  const maxLen = Math.max(...options.map((o) => o.label.length));
+  return options.map(
+    (o) => `  ${theme.accent(o.label.padEnd(maxLen + 2))} ${o.desc}`
+  );
+}
+
+const COMMAND_RELEVANT_FLAGS = new Set<string>(["output", "columns", "file"]);
+
+export function showCommandHelp(
+  category: string,
+  command: CommandDefinition
+): void {
+  const fields = describeCommand(command);
+  const lines = [
+    "",
+    theme.bold("USAGE"),
+    `  ${COMMAND_NAME} ${category} ${command.name} [options]`,
+    "",
+    command.description,
+  ];
+
+  const options: { label: string; desc: string }[] = [];
+
+  for (const f of fields) {
+    const label = f.isPositional
+      ? `<${f.name}>`
+      : f.enumValues
+        ? `--${f.name} <${f.enumValues.join("|")}>`
+        : `--${f.name} <${f.type}>`;
+    let desc = f.description;
+    if (f.defaultValue !== undefined)
+      desc += ` (default: ${JSON.stringify(f.defaultValue)})`;
+    if (f.required) desc += theme.muted(" (required)");
+    options.push({ label, desc });
+  }
+
+  for (const def of FLAG_DEFS) {
+    if (COMMAND_RELEVANT_FLAGS.has(def.key)) {
+      options.push({ label: flagLabel(def), desc: def.description });
+    } else if (def.key === "force" && command.destructive) {
+      options.push({ label: flagLabel(def), desc: def.description });
+    }
+  }
+
+  options.push({
+    label: "--json <data>",
+    desc: "Pass raw JSON — bypasses all other flags (use '-' for stdin)",
+  });
+
+  if (options.length > 0) {
+    lines.push("", ...formatOptionLines(options));
+  }
+
+  lines.push("");
+  console.log(lines.join("\n"));
+}
+
+function getGlobalOptionsLines(): string[] {
+  const options = FLAG_DEFS.map((def) => ({
+    label: flagLabel(def),
+    desc: def.description,
+  }));
+  return [theme.bold("OPTIONS"), ...formatOptionLines(options)];
 }
 
 export async function showGlobalHelp(): Promise<void> {
@@ -235,20 +330,7 @@ export async function showGlobalHelp(): Promise<void> {
     );
   }
 
-  lines.push(
-    "",
-    theme.bold("OPTIONS"),
-    `  ${theme.accent("--help, -h")}         Show help`,
-    `  ${theme.accent("--version, -V")}      Show version`,
-    `  ${theme.accent("--output")} <fmt>     Output format: ${OUTPUT_FORMATS.join(", ")} (default: pretty in TTY, json when piped)`,
-    `  ${theme.accent("--columns")} <cols>   Columns to show in table output (comma-separated)`,
-    `  ${theme.accent("--json")} <data>      Pass raw JSON — bypasses all other flags (use '-' for stdin)`,
-    `  ${theme.accent("--file")} <path>      Read JSON input from a file`,
-    `  ${theme.accent("--key, -k")} <name>   Use a specific stored key (overrides env var and active key)`,
-    `  ${theme.accent("--force, -f")}        Skip confirmation prompts for destructive commands`,
-    "",
-    theme.bold("KEY MANAGEMENT")
-  );
+  lines.push("", ...getGlobalOptionsLines(), "", theme.bold("KEY MANAGEMENT"));
 
   for (const [cmd, desc] of KEYS_COMMAND_TABLE) {
     lines.push(`  ${theme.accent(cmd.padEnd(45))} ${theme.muted(desc)}`);

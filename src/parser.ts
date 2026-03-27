@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { parser } from "zod-opts";
 
-import type { CliTransform, CommandDefinition } from "./commands/types.js";
+import type { CliTransform } from "./commands/types.js";
 import { ValidationError } from "./errors.js";
 
 function unwrapSchema(schema: z.ZodType): z.ZodType {
@@ -34,9 +34,9 @@ function coerceForZodOpts(fieldSchema: z.ZodType): z.ZodType {
     const element = unwrapSchema(inner.element as z.ZodType);
     if (element instanceof z.ZodEnum) {
       const coerced = z.array(z.string());
-      return fieldSchema instanceof z.ZodOptional
-        ? coerced.optional()
-        : coerced;
+      if (fieldSchema instanceof z.ZodOptional) return coerced.optional();
+      if (fieldSchema instanceof z.ZodDefault) return coerced.default([]);
+      return coerced;
     }
   }
   return fieldSchema;
@@ -86,7 +86,9 @@ function getDefaultValue(
 
 function isOptionalField(schema: z.ZodType): boolean {
   return (
-    schema instanceof z.ZodOptional || getDefaultValue(schema) !== undefined
+    schema instanceof z.ZodOptional ||
+    schema instanceof z.ZodNullable ||
+    getDefaultValue(schema) !== undefined
   );
 }
 
@@ -128,8 +130,14 @@ export interface FieldInfo {
   objectKeys?: string[] | undefined;
 }
 
+export interface DescribeCommandInput {
+  schema: z.ZodType;
+  positionalArgs?: string[] | undefined;
+  cliTransforms?: Record<string, CliTransform> | undefined;
+}
+
 /** Describe all fields of a command — single source of truth for --help and COMMANDS.md. */
-export function describeCommand(cmd: CommandDefinition): FieldInfo[] {
+export function describeCommand(cmd: DescribeCommandInput): FieldInfo[] {
   const shape = getSchemaShape(cmd.schema);
   const positionalFieldSet = new Set(cmd.positionalArgs ?? []);
   const transformFieldSet = new Set(Object.keys(cmd.cliTransforms ?? {}));
@@ -199,7 +207,6 @@ export function describeCommand(cmd: CommandDefinition): FieldInfo[] {
 
 export interface BuiltParser {
   parse: (argv: string[]) => Record<string, unknown>;
-  showHelp: () => void;
   jsonFallbackFields: string[];
 }
 
@@ -212,12 +219,7 @@ export function buildParser(
 ): BuiltParser {
   const shape = getSchemaShape(schema);
 
-  const cmd = {
-    schema,
-    positionalArgs,
-    cliTransforms,
-  } as CommandDefinition;
-  const fields = describeCommand(cmd);
+  const fields = describeCommand({ schema, positionalArgs, cliTransforms });
 
   const options: Record<string, { type: z.ZodType }> = {};
   const jsonFallbackFields: string[] = [];
@@ -249,15 +251,6 @@ export function buildParser(
     }
   }
 
-  options["json"] = {
-    type: z
-      .string()
-      .optional()
-      .describe(
-        "Raw JSON input — bypasses all other flags (use '-' for stdin)"
-      ),
-  };
-
   let p = parser().name(commandName).options(options);
 
   const positionalFields = fields.filter((f) => f.isPositional);
@@ -272,10 +265,27 @@ export function buildParser(
     p = p.args(args);
   }
 
+  let parseResult: Record<string, unknown> | undefined;
+
+  p._internalHandler((r) => {
+    switch (r.type) {
+      case "match":
+        parseResult = r.parsed as Record<string, unknown>;
+        break;
+      case "error":
+        throw new ValidationError(r.error.message);
+      case "help":
+      case "version":
+        break;
+    }
+  });
+
   return {
-    parse: (argv: string[]) => p.parse(argv) as Record<string, unknown>,
-    showHelp: () => {
-      p.parse(["--help"]);
+    parse: (argv: string[]): Record<string, unknown> => {
+      parseResult = undefined;
+      p.parse(argv);
+      if (!parseResult) throw new ValidationError("Failed to parse arguments");
+      return parseResult;
     },
     jsonFallbackFields,
   };
@@ -337,9 +347,8 @@ export async function parseCommand(
   const built = buildParser(schema, commandName, positionalArgs, cliTransforms);
   const result = built.parse(argv);
 
-  const { json: _json, ...rawParams } = result;
   const params: Record<string, unknown> = {};
-  const mutableRawParams = { ...rawParams };
+  const mutableRawParams = { ...result };
 
   for (const [fieldName, transform] of Object.entries(cliTransforms ?? {})) {
     const values: Record<string, unknown> = {};

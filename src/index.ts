@@ -7,11 +7,12 @@ import { z } from "zod";
 import { createClient, loadCliConfig } from "./config.js";
 import { CliError, UsageError } from "./errors.js";
 import { formatOutput, getDefaultFormat } from "./output.js";
-import { buildParser, parseCommand } from "./parser.js";
+import { parseCommand } from "./parser.js";
 import {
   findCommand,
   parseArgs,
   showCategoryHelp,
+  showCommandHelp,
   showGlobalHelp,
   showVersion,
 } from "./router.js";
@@ -56,22 +57,12 @@ async function main(): Promise<void> {
   const command = findCommand(parsed.category, parsed.action);
   if (!command) {
     throw new UsageError(
-      `Unknown command: ${parsed.category} ${parsed.action}\nRun '${COMMAND_NAME} ${parsed.category} --help' to see available commands.`
+      `Unknown command: ${parsed.category} ${parsed.action}`
     );
   }
 
   if (parsed.globalFlags.help) {
-    const built = buildParser(
-      command.schema,
-      `iterable ${parsed.category} ${parsed.action}`,
-      command.positionalArgs,
-      command.cliTransforms
-    );
-    try {
-      built.showHelp();
-    } catch {
-      // zod-opts calls process.exit on --help
-    }
+    showCommandHelp(parsed.category, command);
     return;
   }
 
@@ -147,8 +138,24 @@ main().catch(async (error: unknown) => {
   const err = (msg: string) => console.error(chalk.red(`✖ ${msg}`)); // eslint-disable-line no-console
   const hint = (msg: string) => console.error(chalk.dim(`  ${msg}`)); // eslint-disable-line no-console
 
+  const helpHint = (): void => {
+    try {
+      const { category, action } = parseArgs(process.argv.slice(2));
+      if (category && action && findCommand(category, action)) {
+        hint(
+          `Run '${COMMAND_NAME} ${category} ${action} --help' for usage details.`
+        );
+        return;
+      }
+    } catch {
+      // Fall through to generic hint
+    }
+    hint(`Run '${COMMAND_NAME} --help' for usage details.`);
+  };
+
   if (error instanceof CliError) {
     err(error.message);
+    helpHint();
     process.exit(error.exitCode);
   }
 
@@ -157,6 +164,7 @@ main().catch(async (error: unknown) => {
     for (const issue of error.issues) {
       hint(`${issue.path.join(".")}: ${issue.message}`);
     }
+    helpHint();
     process.exit(2);
   }
 

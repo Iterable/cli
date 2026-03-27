@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { sortTransform } from "../../src/commands/transforms";
 import { ValidationError } from "../../src/errors";
-import { buildParser, parseCommand } from "../../src/parser";
+import { buildParser, describeCommand, parseCommand } from "../../src/parser";
 
 describe("buildParser", () => {
   it("registers flat fields natively with zod-opts", () => {
@@ -146,5 +146,57 @@ describe("parseCommand", () => {
     await expect(
       parseCommand(schema, "test", ["--json", "--page"])
     ).rejects.toThrow("--json requires a value");
+  });
+
+  it("unknown option throws ValidationError", async () => {
+    const schema = z.object({
+      page: z.number().optional(),
+    });
+    await expect(parseCommand(schema, "test", ["--unknown"])).rejects.toThrow(
+      ValidationError
+    );
+  });
+});
+
+describe("describeCommand", () => {
+  it("treats nullable fields as optional", () => {
+    const schema = z.object({
+      name: z.string(),
+      tag: z.string().nullable(),
+    });
+    const fields = describeCommand({ schema });
+    const nameField = fields.find((f) => f.name === "name");
+    const tagField = fields.find((f) => f.name === "tag");
+    expect(nameField?.required).toBe(true);
+    expect(tagField?.required).toBe(false);
+  });
+
+  it("treats fields with defaults as optional", () => {
+    const schema = z.object({
+      limit: z.number().default(10),
+    });
+    const fields = describeCommand({ schema });
+    const limitField = fields.find((f) => f.name === "limit");
+    expect(limitField?.required).toBe(false);
+    expect(limitField?.defaultValue).toBe(10);
+  });
+
+  it("auto-detects single required scalar as positional", () => {
+    const schema = z.object({
+      id: z.number(),
+      verbose: z.boolean().optional(),
+    });
+    const fields = describeCommand({ schema });
+    const idField = fields.find((f) => f.name === "id");
+    expect(idField?.isPositional).toBe(true);
+  });
+
+  it("does not auto-detect positional when multiple required fields exist", () => {
+    const schema = z.object({
+      id: z.number(),
+      name: z.string(),
+    });
+    const fields = describeCommand({ schema });
+    expect(fields.every((f) => !f.isPositional)).toBe(true);
   });
 });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
+import { UsageError } from "../../src/errors";
 import { parseArgs } from "../../src/router";
 
 describe("parseArgs", () => {
@@ -145,5 +146,40 @@ describe("parseArgs", () => {
     expect(result.category).toBe("campaigns");
     expect(result.action).toBe("list");
     expect(result.rest).toEqual(["--pageSize", "5"]);
+  });
+
+  it("throws UsageError for invalid --output value", () => {
+    expect(() => parseArgs(["--output", "xml", "campaigns", "list"])).toThrow(
+      UsageError
+    );
+    expect(() => parseArgs(["--output", "xml"])).toThrow(
+      "Invalid output format"
+    );
+  });
+
+  it("throws UsageError when flag value is missing", () => {
+    expect(() => parseArgs(["campaigns", "list", "--output"])).toThrow(
+      UsageError
+    );
+    expect(() => parseArgs(["--key"])).toThrow("--key requires a value");
+  });
+
+  it("throws UsageError when flag value is another known flag", () => {
+    expect(() => parseArgs(["--output", "--help"])).toThrow(UsageError);
+    expect(() => parseArgs(["--key", "--force"])).toThrow(
+      "--key requires a value"
+    );
+  });
+
+  it("allows values starting with - that are not known flags", () => {
+    const result = parseArgs(["--key", "-my-key", "campaigns", "list"]);
+    expect(result.globalFlags.key).toBe("-my-key");
+  });
+
+  it("passes --json through to rest (not consumed by router)", () => {
+    const result = parseArgs(["campaigns", "list", "--json", '{"page":1}']);
+    expect(result.category).toBe("campaigns");
+    expect(result.action).toBe("list");
+    expect(result.rest).toEqual(["--json", '{"page":1}']);
   });
 });
