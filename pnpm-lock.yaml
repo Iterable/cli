@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@iterable/api':
-        specifier: 0.10.0
-        version: 0.10.0(typescript@6.0.2)
+        specifier: 0.10.1
+        version: 0.10.1(typescript@6.0.2)
       '@primno/dpapi':
         specifier: 2.0.1
         version: 2.0.1
@@ -626,8 +626,8 @@ packages:
     resolution: {integrity: sha512-ZXRY4jNvVgSVQ8DL3LTcakaAtXwTVUxE81hslsyD2AtoXW/wVob10HkOJ1X/pAlcI7D+2YoZKg5do8G/w6RYgA==}
     engines: {node: '>=8'}
 
-  '@iterable/api@0.10.0':
-    resolution: {integrity: sha512-gqZvvz4quzLk1UyaxZqPAFJXpDMBzo33dgg7eUvcbnJTVxz9ro3g6y/zvW9blDGtprEkXib77skF1vNMMUa8lQ==}
+  '@iterable/api@0.10.1':
+    resolution: {integrity: sha512-U5bLlg3CGzTwb6aaX4THUjje0o6UCdx/xQ8eewkgBTB62jWgksQhBYIxsc2o6wudTNu27MURQbmZTsqp9yVuKA==}
     engines: {node: '>=18.0.0'}
 
   '@jest/console@30.3.0':
@@ -2886,7 +2886,7 @@ snapshots:
 
   '@istanbuljs/schema@0.1.3': {}
 
-  '@iterable/api@0.10.0(typescript@6.0.2)':
+  '@iterable/api@0.10.1(typescript@6.0.2)':
     dependencies:
       '@t3-oss/env-core': 0.13.11(typescript@6.0.2)(zod@4.3.6)
       axios: 1.13.6

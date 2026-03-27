@@ -197,14 +197,24 @@ function flagLabel(def: FlagDef): string {
   return def.helpArg ? `${names} ${def.helpArg}` : names;
 }
 
-function formatOptionLines(
-  options: { label: string; desc: string }[]
-): string[] {
+interface OptionLine {
+  label: string;
+  desc: string;
+  extra?: string | undefined;
+}
+
+function formatOptionLines(options: OptionLine[]): string[] {
   if (options.length === 0) return [];
   const maxLen = Math.max(...options.map((o) => o.label.length));
-  return options.map(
-    (o) => `  ${theme.accent(o.label.padEnd(maxLen + 2))} ${o.desc}`
-  );
+  const pad = maxLen + 4;
+  const lines: string[] = [];
+  for (const o of options) {
+    lines.push(`  ${theme.accent(o.label.padEnd(maxLen + 2))} ${o.desc}`);
+    if (o.extra) {
+      lines.push(`  ${"".padEnd(pad)}${theme.muted(o.extra)}`);
+    }
+  }
+  return lines;
 }
 
 const COMMAND_RELEVANT_FLAGS = new Set<string>(["output", "columns", "file"]);
@@ -222,19 +232,32 @@ export function showCommandHelp(
     command.description,
   ];
 
-  const options: { label: string; desc: string }[] = [];
+  const options: OptionLine[] = [];
 
   for (const f of fields) {
-    const label = f.isPositional
-      ? `<${f.name}>`
-      : f.enumValues
-        ? `--${f.name} <${f.enumValues.join("|")}>`
-        : `--${f.name} <${f.type}>`;
+    const isArray = f.type.endsWith("[]");
+    const enumInline = f.enumValues && f.enumValues.join("|").length <= 30;
+    let label: string;
+    if (f.isPositional) {
+      label = `<${f.name}>`;
+    } else if (f.enumValues && enumInline) {
+      label = `--${f.name} <${f.enumValues.join("|")}>`;
+    } else if (f.enumValues) {
+      label = isArray ? `--${f.name} <value ...>` : `--${f.name} <value>`;
+    } else if (isArray) {
+      label = `--${f.name} <${f.name} ...>`;
+    } else {
+      label = `--${f.name} <${f.type}>`;
+    }
     let desc = f.description;
     if (f.defaultValue !== undefined)
       desc += ` (default: ${JSON.stringify(f.defaultValue)})`;
     if (f.required) desc += theme.muted(" (required)");
-    options.push({ label, desc });
+    const extra =
+      f.enumValues && !enumInline
+        ? `[values: ${f.enumValues.join(", ")}]`
+        : undefined;
+    options.push({ label, desc, extra });
   }
 
   for (const def of FLAG_DEFS) {

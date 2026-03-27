@@ -109,6 +109,10 @@ function getZodTypeName(schema: z.ZodType): string {
 function getEnumValues(schema: z.ZodType): string[] | undefined {
   const inner = unwrapSchema(schema);
   if (inner instanceof z.ZodEnum) return inner.options as string[];
+  if (inner instanceof z.ZodArray) {
+    const element = unwrapSchema(inner.element as z.ZodType);
+    if (element instanceof z.ZodEnum) return element.options as string[];
+  }
   return undefined;
 }
 
