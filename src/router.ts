@@ -166,30 +166,56 @@ export function showVersion(): void {
   console.log(`${COMMAND_NAME} ${PACKAGE_VERSION}`);
 }
 
-interface KeyInfo {
-  status: "env" | "keymanager" | "inactive" | "none";
-  name?: string | undefined;
-  endpoint?: string | undefined;
-}
-
-async function getKeyInfo(): Promise<KeyInfo> {
-  if (process.env.ITERABLE_API_KEY) return { status: "env" };
-  if (isTestEnv()) return { status: "none" };
+async function getKeyStatusLine(keyOverride?: string): Promise<string> {
+  if (process.env.ITERABLE_API_KEY && !keyOverride) {
+    return theme.muted(
+      "  Using API key from ITERABLE_API_KEY environment variable"
+    );
+  }
+  if (isTestEnv()) {
+    return (
+      theme.key("  No API key configured.") +
+      theme.muted(
+        ` Run ${theme.accent(`${COMMAND_NAME} keys add`)} to add one.`
+      )
+    );
+  }
   try {
     const { getKeyManager } = await import("./key-manager.js");
     const km = getKeyManager();
-    await km.initialize();
-    if (!(await km.hasKeys())) return { status: "none" };
-    if (!(await km.hasActiveKey())) return { status: "inactive" };
-    const meta = await km.getActiveKeyMetadata();
-    return {
-      status: "keymanager",
-      name: meta?.name,
-      endpoint: meta?.baseUrl.replace("https://", ""),
-    };
+    const keys = await km.listKeys();
+
+    const meta = keyOverride
+      ? keys.find((k) => k.name === keyOverride || k.id === keyOverride)
+      : keys.find((k) => k.isActive);
+
+    if (meta) {
+      const endpoint = meta.baseUrl.replace("https://", "");
+      return theme.muted(`  Using key "${meta.name}" (${endpoint})`);
+    }
+    if (keyOverride) {
+      return (
+        theme.key(`  Key "${keyOverride}" not found.`) +
+        theme.muted(
+          ` Run ${theme.accent(`${COMMAND_NAME} keys list`)} to see available keys.`
+        )
+      );
+    }
+    if (keys.length > 0) {
+      return (
+        theme.key("  No active API key.") +
+        theme.muted(
+          ` Run ${theme.accent(`${COMMAND_NAME} keys activate <name>`)} to activate one.`
+        )
+      );
+    }
   } catch {
-    return { status: "none" };
+    // Fall through to "none"
   }
+  return (
+    theme.key("  No API key configured.") +
+    theme.muted(` Run ${theme.accent(`${COMMAND_NAME} keys add`)} to add one.`)
+  );
 }
 
 function flagLabel(def: FlagDef): string {
@@ -289,50 +315,16 @@ function getGlobalOptionsLines(): string[] {
   return [theme.bold("OPTIONS"), ...formatOptionLines(options)];
 }
 
-export async function showGlobalHelp(): Promise<void> {
+export async function showGlobalHelp(keyOverride?: string): Promise<void> {
   const version = PACKAGE_VERSION;
   const categories = getCategories();
-  const keyInfo = await getKeyInfo();
 
   const lines = [
     "",
     theme.bold(`${COMMAND_NAME} v${version}`) +
       " - Command-line interface for the Iterable API",
+    await getKeyStatusLine(keyOverride),
   ];
-
-  switch (keyInfo.status) {
-    case "env":
-      lines.push(
-        theme.muted(
-          "  Using API key from ITERABLE_API_KEY environment variable"
-        )
-      );
-      break;
-    case "keymanager":
-      lines.push(
-        theme.muted(
-          `  Using key "${keyInfo.name}"` +
-            (keyInfo.endpoint ? ` (${keyInfo.endpoint})` : "")
-        )
-      );
-      break;
-    case "inactive":
-      lines.push(
-        theme.key("  No active API key.") +
-          theme.muted(
-            ` Run ${theme.accent(`${COMMAND_NAME} keys activate <name>`)} to activate one.`
-          )
-      );
-      break;
-    case "none":
-      lines.push(
-        theme.key("  No API key configured.") +
-          theme.muted(
-            ` Run ${theme.accent(`${COMMAND_NAME} keys add`)} to add one.`
-          )
-      );
-      break;
-  }
 
   lines.push(
     "",

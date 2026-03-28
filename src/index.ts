@@ -35,7 +35,7 @@ async function main(): Promise<void> {
     if (parsed.category) {
       showCategoryHelp(parsed.category);
     } else {
-      await showGlobalHelp();
+      await showGlobalHelp(parsed.globalFlags.key);
     }
     return;
   }
