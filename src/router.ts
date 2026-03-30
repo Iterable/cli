@@ -359,6 +359,11 @@ export async function showGlobalHelp(keyOverride?: string): Promise<void> {
     `  ${theme.accent(`${COMMAND_NAME} completion uninstall`.padEnd(45))} ${theme.muted("Remove shell completion")}`
   );
 
+  lines.push("", theme.bold("UPDATE"));
+  lines.push(
+    `  ${theme.accent(`${COMMAND_NAME} update`.padEnd(45))} ${theme.muted("Check for and install the latest version")}`
+  );
+
   lines.push("");
 
   console.log(lines.join("\n"));

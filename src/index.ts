@@ -17,9 +17,10 @@ import {
   showGlobalHelp,
   showVersion,
 } from "./router.js";
-import { COMMAND_NAME } from "./utils/command-info.js";
+import { checkForUpdate, handleUpdateCommand } from "./update.js";
+import { COMMAND_NAME, IS_NPX, PACKAGE_NAME } from "./utils/command-info.js";
 
-completion.init();
+if (!IS_NPX) completion.init();
 
 const CLI_PAGINATION_DEFAULTS: Record<string, number> = {
   page: 1,
@@ -29,8 +30,27 @@ const CLI_PAGINATION_DEFAULTS: Record<string, number> = {
 async function main(): Promise<void> {
   const parsed = parseArgs(process.argv.slice(2));
 
+  // Fire-and-forget update check (reads from cache, defers notification to exit).
+  // Suppress for "update" (stale after upgrading) and "completion" (clutters
+  // the shell-init output from omelette's process.exit()).
+  if (parsed.category !== "update" && parsed.category !== "completion") {
+    checkForUpdate();
+  }
+
   if (parsed.globalFlags.version) {
     showVersion();
+    return;
+  }
+
+  if (parsed.category === "update") {
+    if (parsed.globalFlags.help) {
+      console.log(
+        // eslint-disable-line no-console
+        `\nUsage: ${COMMAND_NAME} update\n\nUpgrade ${PACKAGE_NAME} to the latest version.\n`
+      );
+      return;
+    }
+    await handleUpdateCommand();
     return;
   }
 
@@ -44,6 +64,15 @@ async function main(): Promise<void> {
   }
 
   if (parsed.category === "completion") {
+    if (IS_NPX) {
+      // eslint-disable-next-line no-console
+      console.error(
+        "Shell completion requires a global install.\n" +
+          `Run: npm install -g ${PACKAGE_NAME}`
+      );
+      return;
+    }
+
     /* eslint-disable no-console */
     // omelette exposes getDefaultShellInitFile() but @types/omelette omits it
     let initFile: string | undefined;
@@ -57,7 +86,7 @@ async function main(): Promise<void> {
 
     let successMsg: string | undefined;
 
-    // Both setupShellInitFile and cleanupShellInitFile call process.exit(),
+    // Both setupShellInitFile and cleanupShellInitFile call process.exit()
     process.on("exit", () => {
       if (!successMsg) return;
       console.log(successMsg);

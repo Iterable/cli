@@ -17,9 +17,13 @@ const SPECIAL_CATEGORIES: Record<string, readonly string[]> = {
   completion: COMPLETION_SUBCOMMANDS,
 };
 
+/** Standalone commands with no subcommands */
+const STANDALONE_COMMANDS = ["update"] as const;
+
 const topLevelCompletions = [
   ...getCategories(),
   ...Object.keys(SPECIAL_CATEGORIES),
+  ...STANDALONE_COMMANDS,
 ];
 
 const globalFlagCompletions = FLAG_DEFS.flatMap((d) => d.aliases);

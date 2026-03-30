@@ -43,7 +43,7 @@ export function showSuccess(message: string): void {
 }
 
 export function showError(message: string): void {
-  console.log(chalk.hex(THEME.error)("✖ " + message));
+  console.error(chalk.hex(THEME.error)("✖ " + message));
 }
 
 export function showInfo(message: string): void {

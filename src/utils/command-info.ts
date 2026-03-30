@@ -23,17 +23,21 @@ function loadPackageJson(): PackageJson {
 
 const pkg = loadPackageJson();
 
-const binName = pkg.bin ? Object.keys(pkg.bin)[0] : undefined;
+/** The CLI binary name from the `bin` field in package.json */
+export const BIN_NAME: string = pkg.bin
+  ? (Object.keys(pkg.bin)[0] ?? pkg.name)
+  : pkg.name;
 
-const isNpx =
-  (process.argv[1]?.includes("npx") ||
-    process.env.npm_execpath?.includes("npx")) ??
-  false;
+/** True when running via npx (ephemeral execution, no persistent install) */
+export const IS_NPX: boolean = Boolean(
+  process.argv[1]?.includes("npx") || process.env.npm_execpath?.includes("npx")
+);
 
 /** The command name as the user would invoke it */
-export const COMMAND_NAME: string = isNpx
-  ? `npx ${pkg.name}`
-  : (binName ?? pkg.name);
+export const COMMAND_NAME: string = IS_NPX ? `npx ${pkg.name}` : BIN_NAME;
+
+/** npm package name from package.json */
+export const PACKAGE_NAME: string = pkg.name;
 
 /** Package version from package.json */
 export const PACKAGE_VERSION: string = pkg.version;
