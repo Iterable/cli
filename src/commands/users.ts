@@ -5,6 +5,7 @@ import {
   GetSentMessagesParamsSchema,
   GetUserByEmailParamsSchema,
   GetUserByIdParamsSchema,
+  MergeUsersParamsSchema,
   UpdateEmailParamsSchema,
   UpdateUserParamsSchema,
   UpdateUserSubscriptionsParamsSchema,
@@ -115,5 +116,14 @@ export const userCommands: CommandDefinition[] = [
     clientMethod: "getUserFields",
     schema: z.object({}),
     execute: (client) => client.getUserFields(),
+  }),
+  defineCommand({
+    category: "users",
+    name: "merge",
+    description:
+      "Merge two user profiles — all data and events from source are migrated to destination",
+    clientMethod: "mergeUsers",
+    schema: MergeUsersParamsSchema,
+    destructive: true,
   }),
 ];

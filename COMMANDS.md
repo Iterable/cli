@@ -1,4 +1,4 @@
-# Available Commands (109)
+# Available Commands (110)
 
 All commands follow the pattern: `iterable <category> <command> [options]`
 
@@ -1426,7 +1426,7 @@ iterable templates upsert-sms <clientTemplateId>
 | `--name` | string | no | Template name |
 
 
-## users (12)
+## users (13)
 
 ### bulk-update
 
@@ -1538,6 +1538,22 @@ iterable users get-sent-messages
 | `--messageMedium` | `Email` \| `Push` \| `InApp` \| `SMS` | no | Only include messages of this type |
 | `--startDateTime` | string | no | Start date time (yyyy-MM-dd HH:mm:ss ZZ) |
 | `--userId` | string | no | User ID (alternative to email) |
+
+### merge
+
+Merge two user profiles — all data and events from source are migrated to destination
+
+```
+iterable users merge
+```
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `--arrayMerge` | json[] | no | Array fields whose contents should be merged (only custom arrays, not Iterable-managed ones like devices) |
+| `--destinationEmail` | string | no | Email of the destination user profile to merge into |
+| `--destinationUserId` | string | no | User ID of the destination user profile to merge into |
+| `--sourceEmail` | string | no | Email of the source user profile to merge from |
+| `--sourceUserId` | string | no | User ID of the source user profile to merge from |
 
 ### update
 

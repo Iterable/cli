@@ -112,6 +112,7 @@ const EXPECTED_COMMANDS = [
   "users:get-by-userid",
   "users:get-fields",
   "users:get-sent-messages",
+  "users:merge",
   "users:update",
   "users:update-email",
   "users:update-subscriptions",
