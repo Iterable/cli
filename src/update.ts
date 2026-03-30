@@ -14,7 +14,6 @@ import { z } from "zod";
 import { CliError } from "./errors.js";
 import { getSpinner } from "./utils/cli-env.js";
 import {
-  BIN_NAME,
   COMMAND_NAME,
   IS_NPX,
   PACKAGE_NAME,
@@ -180,28 +179,37 @@ export async function handleUpdateCommand(): Promise<void> {
   // the user can verify.
   const agent = getUserAgent() ?? "npm";
 
-  const resolved = resolveCommand(agent, "global", [`${PACKAGE_NAME}@latest`]);
+  const spinner = await getSpinner();
+  spinner.start("Checking for latest version...");
+
+  const latest = await fetchLatestVersion();
+  if (!latest) {
+    spinner.fail("Could not reach the npm registry");
+    throw new CliError(
+      "Failed to fetch latest version. Check your network connection."
+    );
+  }
+
+  if (!semverGt(latest, PACKAGE_VERSION)) {
+    spinner.succeed(`Already up to date (${PACKAGE_NAME}@${PACKAGE_VERSION})`);
+    return;
+  }
+
+  const resolved = resolveCommand(agent, "global", [
+    `${PACKAGE_NAME}@${latest}`,
+  ]);
   if (!resolved) {
     throw new CliError(
       `Could not determine install command for package manager "${agent}".`
     );
   }
 
-  const spinner = await getSpinner();
   const cmdStr = `${resolved.command} ${resolved.args.join(" ")}`;
-  spinner.start(`Upgrading ${PACKAGE_NAME} (${cmdStr})...`);
+  spinner.start(`Upgrading ${PACKAGE_NAME} to ${latest} (${cmdStr})...`);
 
   try {
     await execFileAsync(resolved.command, resolved.args);
-
-    let versionLine = "Upgrade complete";
-    try {
-      const { stdout } = await execFileAsync(BIN_NAME, ["--version"]);
-      versionLine = `Upgraded to ${stdout.trim()}`;
-    } catch {
-      // Binary may not be on PATH yet; that's fine
-    }
-    spinner.succeed(versionLine);
+    spinner.succeed(`Upgraded to ${PACKAGE_NAME}@${latest}`);
   } catch (error: unknown) {
     spinner.fail("Upgrade failed");
 
