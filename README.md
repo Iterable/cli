@@ -172,6 +172,28 @@ Keys are stored securely using:
 - **Windows**: DPAPI encryption
 - **Linux**: File with restrictive permissions (`~/.iterable/keys.json`)
 
+### Shell Completion
+
+Enable tab completion for commands, subcommands, and flags:
+
+```bash
+iterable completion install    # auto-detects bash, zsh, or fish
+```
+
+After restarting your shell (or sourcing your profile), tab completion is active:
+
+```bash
+iterable <TAB>                 # shows categories
+iterable campaigns <TAB>       # shows commands
+iterable campaigns list <TAB>  # shows flags
+```
+
+To remove:
+
+```bash
+iterable completion uninstall
+```
+
 ## Development
 
 ```bash

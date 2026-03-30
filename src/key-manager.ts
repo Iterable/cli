@@ -71,13 +71,17 @@ enum StorageMethod {
   FILE = "file",
 }
 
-export interface ApiKeyMetadata {
+/** User-facing key identity — the fields shown in display/help output. */
+export interface ApiKeySummary {
   /** Unique identifier for this key */
   id: string;
   /** User-friendly name for this key */
   name: string;
   /** Iterable API base URL (e.g., https://api.iterable.com or https://api.eu.iterable.com) */
   baseUrl: string;
+}
+
+export interface ApiKeyMetadata extends ApiKeySummary {
   /** ISO timestamp when key was created */
   created: string;
   /** ISO timestamp when key was last updated */

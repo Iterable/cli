@@ -3,10 +3,18 @@ import chalk from "chalk";
 import inquirer from "inquirer";
 
 import { createClient, loadCliConfig } from "./config.js";
-import type { ApiKeyMetadata, KeyManager } from "./key-manager.js";
+import type {
+  ApiKeyMetadata,
+  ApiKeySummary,
+  KeyManager,
+} from "./key-manager.js";
 import { getKeyManager } from "./key-manager.js";
 import { getSpinner, isTestEnv } from "./utils/cli-env.js";
-import { COMMAND_NAME, KEYS_COMMAND_TABLE } from "./utils/command-info.js";
+import {
+  COMMAND_NAME,
+  KEYS_COMMAND_TABLE,
+  KEYS_SUBCOMMANDS,
+} from "./utils/command-info.js";
 import { promptForIterableBaseUrl } from "./utils/endpoint-prompt.js";
 import { getKeyStorageMessage } from "./utils/formatting.js";
 import { promptForApiKey } from "./utils/password-prompt.js";
@@ -22,7 +30,7 @@ import {
   showSuccess,
 } from "./utils/ui.js";
 
-function displayKeyDetails(meta: ApiKeyMetadata): void {
+function displayKeyDetails(meta: ApiKeySummary): void {
   const w = 12;
   console.log(`  ${"Name:".padEnd(w)} ${chalk.white.bold(meta.name)}`);
   console.log(`  ${"ID:".padEnd(w)} ${chalk.gray(meta.id)}`);
@@ -220,11 +228,8 @@ async function saveKeyInteractive(
         : "API key stored successfully!"
     );
 
-    const w = 12;
     console.log();
-    console.log(`  ${"Name:".padEnd(w)} ${chalk.white.bold(name)}`);
-    console.log(`  ${"ID:".padEnd(w)} ${chalk.gray(id)}`);
-    console.log(`  ${"Endpoint:".padEnd(w)} ${linkColor()(baseUrl)}`);
+    displayKeyDetails({ name, id, baseUrl });
     console.log();
     showSuccess(
       isUpdate
@@ -252,25 +257,258 @@ async function saveKeyInteractive(
   }
 }
 
-/** Handle `iterable keys <subcommand>` */
+type KeysSubcommand = (typeof KEYS_SUBCOMMANDS)[number];
+type KeysHandler = (args: string[], keyOverride?: string) => Promise<void>;
+
+const KEYS_HANDLERS: Record<KeysSubcommand, KeysHandler> = {
+  async list() {
+    const keys = await getKeyManager().listKeys();
+
+    if (keys.length === 0) {
+      showBox(
+        "No API Keys Found",
+        [
+          chalk.gray("You haven't added any API keys yet."),
+          "",
+          chalk.cyan("Get started by running:"),
+          chalk.bold.white(`  ${COMMAND_NAME} keys add`),
+        ],
+        { icon: icons.key, theme: "info" }
+      );
+      return;
+    }
+
+    const table = createTable({
+      head: ["Name", "ID", "Endpoint", "Modified", "Status"],
+      style: "normal",
+    });
+
+    for (const key of keys) {
+      const statusBadge = key.isActive
+        ? chalk.bgGreen.black(" ACTIVE ")
+        : chalk.gray("INACTIVE");
+
+      const dateToShow = key.updated ?? key.created;
+      const formattedDate = new Date(dateToShow).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+
+      const endpoint = key.baseUrl.replace("https://", "");
+
+      table.push([
+        chalk.white.bold(key.name),
+        chalk.gray(key.id),
+        linkColor()(endpoint),
+        chalk.gray(formattedDate),
+        statusBadge,
+      ]);
+    }
+
+    console.log(table.toString());
+  },
+
+  async add() {
+    await saveKeyInteractive(getKeyManager(), null);
+  },
+
+  async update(args) {
+    const km = getKeyManager();
+    const existingKey = await findKeyOrExit(km, args[1], "update");
+    await saveKeyInteractive(km, existingKey);
+  },
+
+  async activate(args) {
+    const keyManager = getKeyManager();
+    const keyToActivate = await findKeyOrExit(keyManager, args[1], "activate");
+
+    const spinner = await getSpinner();
+    spinner.start(`Activating key "${keyToActivate.name}"...`);
+
+    try {
+      await keyManager.getKey(keyToActivate.id);
+    } catch (error: unknown) {
+      spinner.fail("Failed to activate key");
+      showError(
+        error instanceof Error ? error.message : "Failed to access key"
+      );
+      showInfo(
+        `This key's value is not accessible. Update it with: ${COMMAND_NAME} keys update "${keyToActivate.name}"`
+      );
+      process.exit(1);
+    }
+
+    await keyManager.setActiveKey(keyToActivate.id);
+    spinner.stop();
+
+    const meta = await keyManager.getActiveKeyMetadata();
+    if (meta) {
+      showSuccess(`Switched to "${meta.name}"`);
+      console.log();
+      displayKeyDetails(meta);
+      console.log();
+    } else {
+      showSuccess(`"${keyToActivate.name}" is now your active API key`);
+    }
+  },
+
+  async deactivate() {
+    const keyManager = getKeyManager();
+    if (!(await keyManager.hasActiveKey())) {
+      showInfo("No key is currently active.");
+      return;
+    }
+    const activeMeta = await keyManager.getActiveKeyMetadata();
+    await keyManager.deactivateAllKeys();
+    showSuccess(
+      `Deactivated "${activeMeta?.name ?? "active key"}". Commands will require ITERABLE_API_KEY env var until a key is activated.`
+    );
+  },
+
+  async delete(args) {
+    const keyManager = getKeyManager();
+    const keyToDelete = await findKeyOrExit(keyManager, args[1], "delete");
+
+    const allKeys = await keyManager.listKeys();
+    const otherKeys = allKeys.filter((k) => k.id !== keyToDelete.id);
+
+    if (keyToDelete.isActive && otherKeys.length === 0) {
+      showInfo("This is your active key and the only key stored.");
+    } else if (keyToDelete.isActive) {
+      showInfo("This is your active key.");
+    }
+
+    let confirmDelete: boolean;
+    if (isTestEnv()) {
+      confirmDelete = true;
+    } else {
+      ({ confirmDelete } = await inquirer.prompt([
+        {
+          type: "confirm",
+          name: "confirmDelete",
+          message: `Permanently delete key "${keyToDelete.name}"?`,
+          default: false,
+        },
+      ]));
+    }
+
+    if (!confirmDelete) {
+      showInfo("Deletion cancelled.");
+      return;
+    }
+
+    if (keyToDelete.isActive && otherKeys.length > 0) {
+      const { newActiveKey } = await inquirer.prompt<{
+        newActiveKey: string;
+      }>([
+        {
+          type: "list" as const,
+          name: "newActiveKey",
+          message: "Select a new active key:",
+          choices: [
+            ...otherKeys.map((k) => ({
+              name: `${k.name} (${k.baseUrl})`,
+              value: k.id,
+            })),
+            { name: "Don't activate any key", value: "none" },
+          ],
+        },
+      ]);
+      if (newActiveKey !== "none") {
+        await keyManager.setActiveKey(newActiveKey);
+        const activated = otherKeys.find((k) => k.id === newActiveKey);
+        if (activated) {
+          showSuccess(`Switched to "${activated.name}"`);
+        }
+      }
+    }
+
+    try {
+      await keyManager.deleteKey(keyToDelete.id);
+      showSuccess("Key securely removed");
+    } catch (error: unknown) {
+      showError(error instanceof Error ? error.message : "Unknown error");
+      process.exit(1);
+    }
+  },
+
+  async validate(_args, keyOverride) {
+    const keyManager = getKeyManager();
+    const spinner = await getSpinner();
+    spinner.start("Validating API connection...");
+    try {
+      const config = await loadCliConfig(keyOverride);
+      const client = createClient(config);
+      try {
+        await client.getUserFields();
+        spinner.succeed("API connection successful");
+        const w = 12;
+        if (keyOverride) {
+          console.log(`  ${"Key:".padEnd(w)} ${chalk.white.bold(keyOverride)}`);
+        } else if (process.env.ITERABLE_API_KEY) {
+          console.log(
+            `  ${"Source:".padEnd(w)} ${chalk.white("ITERABLE_API_KEY environment variable")}`
+          );
+        } else {
+          const activeMeta = await keyManager.getActiveKeyMetadata();
+          if (activeMeta) {
+            console.log(
+              `  ${"Key:".padEnd(w)} ${chalk.white.bold(activeMeta.name)}`
+            );
+          }
+        }
+        const endpoint = config.baseUrl.replace("https://", "");
+        console.log(`  ${"Endpoint:".padEnd(w)} ${linkColor()(endpoint)}`);
+      } finally {
+        client.destroy();
+      }
+    } catch (error: unknown) {
+      spinner.fail("API connection failed");
+      if (keyOverride) {
+        showInfo(`Key: ${keyOverride}`);
+      } else if (process.env.ITERABLE_API_KEY) {
+        showInfo("Source: ITERABLE_API_KEY environment variable");
+      } else {
+        const activeMeta = await keyManager
+          .getActiveKeyMetadata()
+          .catch(() => null);
+        if (activeMeta) {
+          showInfo(`Key: ${activeMeta.name}`);
+        }
+      }
+      showError(error instanceof Error ? error.message : "Unknown error");
+      process.exit(1);
+    }
+  },
+};
+
 export async function handleKeysCommand(
   args: string[],
   keyOverride?: string
 ): Promise<void> {
   const subCommand = args[0];
-  const positionalArgs = args.filter((arg) => !arg.startsWith("--"));
+  const isValid = (s: string): s is KeysSubcommand =>
+    (KEYS_SUBCOMMANDS as readonly string[]).includes(s);
+
+  if (!subCommand || !isValid(subCommand)) {
+    if (subCommand) {
+      showError(`Unknown keys command: ${subCommand}`);
+    }
+    showKeysHelp();
+    return;
+  }
+
+  const handler = KEYS_HANDLERS[subCommand];
 
   if (keyOverride && subCommand !== "validate") {
     showInfo(
-      `--key is only used with 'keys validate'; ignoring for 'keys ${subCommand ?? ""}'.`
+      `--key is only used with 'keys validate'; ignoring for 'keys ${subCommand}'.`
     );
   }
 
-  const spinner = await getSpinner();
-  const keyManager = getKeyManager();
-
   try {
-    await keyManager.initialize();
+    await getKeyManager().initialize();
   } catch (error: unknown) {
     showError(
       `Failed to initialize key manager: ${error instanceof Error ? error.message : "Unknown error"}`
@@ -279,288 +517,54 @@ export async function handleKeysCommand(
     process.exit(1);
   }
 
-  switch (subCommand) {
-    case "list": {
-      const keys = await keyManager.listKeys();
+  await handler(args, keyOverride);
+}
 
-      if (keys.length === 0) {
-        showBox(
-          "No API Keys Found",
-          [
-            chalk.gray("You haven't added any API keys yet."),
-            "",
-            chalk.cyan("Get started by running:"),
-            chalk.bold.white(`  ${COMMAND_NAME} keys add`),
-          ],
-          { icon: icons.key, theme: "info" }
-        );
-      } else {
-        const table = createTable({
-          head: ["Name", "ID", "Endpoint", "Modified", "Status"],
-          style: "normal",
-        });
+function showKeysHelp(): void {
+  showSection("Available Commands", icons.key);
+  console.log();
 
-        for (const key of keys) {
-          const statusBadge = key.isActive
-            ? chalk.bgGreen.black(" ACTIVE ")
-            : chalk.gray("INACTIVE");
+  const commandsTable = createTable({
+    head: ["Command", "Description"],
+    colWidths: [45, 40],
+    style: "normal",
+  });
 
-          const dateToShow = key.updated ?? key.created;
-          const formattedDate = new Date(dateToShow).toLocaleDateString(
-            "en-US",
-            { year: "numeric", month: "short", day: "numeric" }
-          );
+  commandsTable.push(
+    ...KEYS_COMMAND_TABLE.map(([cmd, desc]) => [cmd, chalk.gray(desc)])
+  );
 
-          const endpoint = key.baseUrl.replace("https://", "");
+  console.log(commandsTable.toString());
+  console.log();
 
-          table.push([
-            chalk.white.bold(key.name),
-            chalk.gray(key.id),
-            linkColor()(endpoint),
-            chalk.gray(formattedDate),
-            statusBadge,
-          ]);
-        }
+  showSection("Examples", icons.fire);
+  console.log();
+  console.log(chalk.white.bold("  Add API keys"));
+  console.log(chalk.gray("  (Interactive prompts: name, region, API key)"));
+  console.log();
+  console.log(chalk.cyan(`    ${COMMAND_NAME} keys add`));
+  console.log();
+  console.log(chalk.white.bold("  Manage your keys"));
+  console.log();
+  console.log(chalk.cyan(`    ${COMMAND_NAME} keys list`));
+  console.log(chalk.cyan(`    ${COMMAND_NAME} keys add`));
+  console.log(chalk.cyan(`    ${COMMAND_NAME} keys update production`));
+  console.log(chalk.cyan(`    ${COMMAND_NAME} keys activate production`));
+  console.log(
+    chalk.cyan(
+      `    ${COMMAND_NAME} keys delete 3f5d2b07-5b1c-4e86-8f3c-9a1b2c3d4e5f`
+    )
+  );
+  console.log();
 
-        console.log(table.toString());
-      }
-      break;
-    }
-
-    case "add": {
-      await saveKeyInteractive(keyManager, null);
-      break;
-    }
-
-    case "update": {
-      const existingKey = await findKeyOrExit(
-        keyManager,
-        positionalArgs[1],
-        "update"
-      );
-      await saveKeyInteractive(keyManager, existingKey);
-      break;
-    }
-
-    case "activate": {
-      const keyToActivate = await findKeyOrExit(
-        keyManager,
-        positionalArgs[1],
-        "activate"
-      );
-
-      spinner.start(`Activating key "${keyToActivate.name}"...`);
-
-      try {
-        await keyManager.getKey(keyToActivate.id);
-      } catch (error: unknown) {
-        spinner.fail("Failed to activate key");
-        showError(
-          error instanceof Error ? error.message : "Failed to access key"
-        );
-        showInfo(
-          `This key's value is not accessible. Update it with: ${COMMAND_NAME} keys update "${keyToActivate.name}"`
-        );
-        process.exit(1);
-      }
-
-      await keyManager.setActiveKey(keyToActivate.id);
-      spinner.stop();
-
-      const meta = await keyManager.getActiveKeyMetadata();
-      if (meta) {
-        showSuccess(`Switched to "${meta.name}"`);
-        console.log();
-        displayKeyDetails(meta);
-        console.log();
-      } else {
-        showSuccess(`"${keyToActivate.name}" is now your active API key`);
-      }
-      break;
-    }
-
-    case "deactivate": {
-      if (!(await keyManager.hasActiveKey())) {
-        showInfo("No key is currently active.");
-        break;
-      }
-      const activeMeta = await keyManager.getActiveKeyMetadata();
-      await keyManager.deactivateAllKeys();
-      showSuccess(
-        `Deactivated "${activeMeta?.name ?? "active key"}". Commands will require ITERABLE_API_KEY env var until a key is activated.`
-      );
-      break;
-    }
-
-    case "delete": {
-      const keyToDelete = await findKeyOrExit(
-        keyManager,
-        positionalArgs[1],
-        "delete"
-      );
-
-      const allKeys = await keyManager.listKeys();
-      const otherKeys = allKeys.filter((k) => k.id !== keyToDelete.id);
-
-      if (keyToDelete.isActive && otherKeys.length === 0) {
-        showInfo("This is your active key and the only key stored.");
-      } else if (keyToDelete.isActive) {
-        showInfo("This is your active key.");
-      }
-
-      let confirmDelete: boolean;
-      if (isTestEnv()) {
-        confirmDelete = true;
-      } else {
-        ({ confirmDelete } = await inquirer.prompt([
-          {
-            type: "confirm",
-            name: "confirmDelete",
-            message: `Permanently delete key "${keyToDelete.name}"?`,
-            default: false,
-          },
-        ]));
-      }
-
-      if (!confirmDelete) {
-        showInfo("Deletion cancelled.");
-        return;
-      }
-
-      if (keyToDelete.isActive && otherKeys.length > 0) {
-        const { newActiveKey } = await inquirer.prompt<{
-          newActiveKey: string;
-        }>([
-          {
-            type: "list" as const,
-            name: "newActiveKey",
-            message: "Select a new active key:",
-            choices: [
-              ...otherKeys.map((k) => ({
-                name: `${k.name} (${k.baseUrl})`,
-                value: k.id,
-              })),
-              { name: "Don't activate any key", value: "none" },
-            ],
-          },
-        ]);
-        if (newActiveKey !== "none") {
-          await keyManager.setActiveKey(newActiveKey);
-          const activated = otherKeys.find((k) => k.id === newActiveKey);
-          if (activated) {
-            showSuccess(`Switched to "${activated.name}"`);
-          }
-        }
-      }
-
-      try {
-        await keyManager.deleteKey(keyToDelete.id);
-        showSuccess("Key securely removed");
-      } catch (error: unknown) {
-        showError(error instanceof Error ? error.message : "Unknown error");
-        process.exit(1);
-      }
-      break;
-    }
-
-    case "validate": {
-      spinner.start("Validating API connection...");
-      try {
-        const config = await loadCliConfig(keyOverride);
-        const client = createClient(config);
-        try {
-          await client.getUserFields();
-          spinner.succeed("API connection successful");
-          const w = 12;
-          if (keyOverride) {
-            console.log(
-              `  ${"Key:".padEnd(w)} ${chalk.white.bold(keyOverride)}`
-            );
-          } else if (process.env.ITERABLE_API_KEY) {
-            console.log(
-              `  ${"Source:".padEnd(w)} ${chalk.white("ITERABLE_API_KEY environment variable")}`
-            );
-          } else {
-            const activeMeta = await keyManager.getActiveKeyMetadata();
-            if (activeMeta) {
-              console.log(
-                `  ${"Key:".padEnd(w)} ${chalk.white.bold(activeMeta.name)}`
-              );
-            }
-          }
-          const endpoint = config.baseUrl.replace("https://", "");
-          console.log(`  ${"Endpoint:".padEnd(w)} ${linkColor()(endpoint)}`);
-        } finally {
-          client.destroy();
-        }
-      } catch (error: unknown) {
-        spinner.fail("API connection failed");
-        if (keyOverride) {
-          showInfo(`Key: ${keyOverride}`);
-        } else if (process.env.ITERABLE_API_KEY) {
-          showInfo("Source: ITERABLE_API_KEY environment variable");
-        } else {
-          const activeMeta = await keyManager
-            .getActiveKeyMetadata()
-            .catch(() => null);
-          if (activeMeta) {
-            showInfo(`Key: ${activeMeta.name}`);
-          }
-        }
-        showError(error instanceof Error ? error.message : "Unknown error");
-        process.exit(1);
-      }
-      break;
-    }
-
-    default: {
-      showSection("Available Commands", icons.key);
-      console.log();
-
-      const commandsTable = createTable({
-        head: ["Command", "Description"],
-        colWidths: [45, 40],
-        style: "normal",
-      });
-
-      commandsTable.push(
-        ...KEYS_COMMAND_TABLE.map(([cmd, desc]) => [cmd, chalk.gray(desc)])
-      );
-
-      console.log(commandsTable.toString());
-      console.log();
-
-      showSection("Examples", icons.fire);
-      console.log();
-      console.log(chalk.white.bold("  Add API keys"));
-      console.log(chalk.gray("  (Interactive prompts: name, region, API key)"));
-      console.log();
-      console.log(chalk.cyan(`    ${COMMAND_NAME} keys add`));
-      console.log();
-      console.log(chalk.white.bold("  Manage your keys"));
-      console.log();
-      console.log(chalk.cyan(`    ${COMMAND_NAME} keys list`));
-      console.log(chalk.cyan(`    ${COMMAND_NAME} keys add`));
-      console.log(chalk.cyan(`    ${COMMAND_NAME} keys update production`));
-      console.log(chalk.cyan(`    ${COMMAND_NAME} keys activate production`));
-      console.log(
-        chalk.cyan(
-          `    ${COMMAND_NAME} keys delete 3f5d2b07-5b1c-4e86-8f3c-9a1b2c3d4e5f`
-        )
-      );
-      console.log();
-
-      showBox(
-        "Important Notes",
-        [
-          "API keys are prompted interactively - never stored in shell history",
-          "Each API key is tightly coupled to its endpoint (US/EU/custom)",
-          getKeyStorageMessage(),
-          "The active key (● ACTIVE) is what your CLI commands will use",
-        ],
-        { icon: icons.bulb, theme: "info", padding: 1 }
-      );
-      break;
-    }
-  }
+  showBox(
+    "Important Notes",
+    [
+      "API keys are prompted interactively - never stored in shell history",
+      "Each API key is tightly coupled to its endpoint (US/EU/custom)",
+      getKeyStorageMessage(),
+      "The active key (● ACTIVE) is what your CLI commands will use",
+    ],
+    { icon: icons.bulb, theme: "info", padding: 1 }
+  );
 }

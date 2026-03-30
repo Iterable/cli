@@ -4,6 +4,7 @@ import chalk from "chalk";
 import { readFileSync } from "fs";
 import { z } from "zod";
 
+import { completion } from "./completion.js";
 import { createClient, loadCliConfig } from "./config.js";
 import { CliError, UsageError } from "./errors.js";
 import { formatOutput, getDefaultFormat } from "./output.js";
@@ -17,6 +18,8 @@ import {
   showVersion,
 } from "./router.js";
 import { COMMAND_NAME } from "./utils/command-info.js";
+
+completion.init();
 
 const CLI_PAGINATION_DEFAULTS: Record<string, number> = {
   page: 1,
@@ -37,6 +40,44 @@ async function main(): Promise<void> {
     } else {
       await showGlobalHelp(parsed.globalFlags.key);
     }
+    return;
+  }
+
+  if (parsed.category === "completion") {
+    /* eslint-disable no-console */
+    // omelette exposes getDefaultShellInitFile() but @types/omelette omits it
+    let initFile: string | undefined;
+    try {
+      initFile = (
+        completion as unknown as { getDefaultShellInitFile: () => string }
+      ).getDefaultShellInitFile();
+    } catch {
+      // Shell detection failed — we'll still try the operation
+    }
+
+    let successMsg: string | undefined;
+
+    // Both setupShellInitFile and cleanupShellInitFile call process.exit(),
+    process.on("exit", () => {
+      if (!successMsg) return;
+      console.log(successMsg);
+      if (initFile) {
+        console.log(`  Modified: ${initFile}`);
+        console.log(`  Restart your shell or run: source ${initFile}`);
+      }
+    });
+
+    if (parsed.action === "install") {
+      successMsg = "Shell completion installed.";
+      completion.setupShellInitFile();
+    } else if (parsed.action === "uninstall") {
+      successMsg = "Shell completion removed.";
+      completion.cleanupShellInitFile();
+    } else {
+      console.log(`Usage: ${COMMAND_NAME} completion install|uninstall`);
+    }
+
+    /* eslint-enable no-console */
     return;
   }
 

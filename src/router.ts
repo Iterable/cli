@@ -42,7 +42,7 @@ interface FlagDef {
   apply: (flags: GlobalFlags, value: string) => void;
 }
 
-const FLAG_DEFS: FlagDef[] = [
+export const FLAG_DEFS: FlagDef[] = [
   {
     key: "help",
     aliases: ["--help", "-h"],
@@ -350,6 +350,14 @@ export async function showGlobalHelp(keyOverride?: string): Promise<void> {
   for (const [cmd, desc] of KEYS_COMMAND_TABLE) {
     lines.push(`  ${theme.accent(cmd.padEnd(45))} ${theme.muted(desc)}`);
   }
+
+  lines.push("", theme.bold("SHELL COMPLETION"));
+  lines.push(
+    `  ${theme.accent(`${COMMAND_NAME} completion install`.padEnd(45))} ${theme.muted("Install shell completion (bash, zsh, fish)")}`
+  );
+  lines.push(
+    `  ${theme.accent(`${COMMAND_NAME} completion uninstall`.padEnd(45))} ${theme.muted("Remove shell completion")}`
+  );
 
   lines.push("");
 

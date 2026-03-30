@@ -38,6 +38,17 @@ export const COMMAND_NAME: string = isNpx
 /** Package version from package.json */
 export const PACKAGE_VERSION: string = pkg.version;
 
+/** Keys subcommand names: single source of truth for keys-cli, completion, and help. */
+export const KEYS_SUBCOMMANDS = [
+  "list",
+  "add",
+  "update",
+  "activate",
+  "deactivate",
+  "delete",
+  "validate",
+] as const;
+
 /** Keys subcommand help rows: [command, description] */
 export const KEYS_COMMAND_TABLE: ReadonlyArray<readonly [string, string]> = [
   [`${COMMAND_NAME} keys list`, "View all stored API keys"],

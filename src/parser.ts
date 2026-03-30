@@ -88,7 +88,7 @@ function isOptionalField(schema: z.ZodType): boolean {
   return (
     schema instanceof z.ZodOptional ||
     schema instanceof z.ZodNullable ||
-    getDefaultValue(schema) !== undefined
+    schema instanceof z.ZodDefault
   );
 }
 
@@ -271,6 +271,8 @@ export function buildParser(
 
   let parseResult: Record<string, unknown> | undefined;
 
+  // zod-opts private API — no public way to intercept parse errors without process.exit.
+  // Pinned to exact version in package.json; verify this still works on any upgrade.
   p._internalHandler((r) => {
     switch (r.type) {
       case "match":
