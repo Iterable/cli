@@ -192,14 +192,11 @@ export async function handleUpdateCommand(): Promise<void> {
   spinner.start(`Upgrading ${PACKAGE_NAME} (${cmdStr})...`);
 
   try {
-    // shell: true is required on Windows where npm/pnpm/yarn are .cmd shims
-    await execFileAsync(resolved.command, resolved.args, { shell: true });
+    await execFileAsync(resolved.command, resolved.args);
 
     let versionLine = "Upgrade complete";
     try {
-      const { stdout } = await execFileAsync(BIN_NAME, ["--version"], {
-        shell: true,
-      });
+      const { stdout } = await execFileAsync(BIN_NAME, ["--version"]);
       versionLine = `Upgraded to ${stdout.trim()}`;
     } catch {
       // Binary may not be on PATH yet; that's fine
