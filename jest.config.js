@@ -28,6 +28,6 @@ export default {
     "^#supports-color$": "<rootDir>/node_modules/chalk/source/vendor/supports-color/index.js",
   },
   transformIgnorePatterns: [
-    "node_modules/(?!.*(@iterable|chalk))"
+    "node_modules/(?!.*(@iterable|chalk|boxen|semver|camelcase|string-width|get-east-asian-width|emoji-regex|widest-line|ansi-align|wrap-ansi|strip-ansi|ansi-regex|ansi-styles|cli-boxes|type-fest))"
   ],
 };

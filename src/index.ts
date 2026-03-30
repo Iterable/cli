@@ -197,66 +197,68 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch(async (error: unknown) => {
-  const {
-    IterableApiError,
-    IterableNetworkError,
-    IterableRawError,
-    IterableResponseValidationError,
-  } = await import("@iterable/api");
+main()
+  .then(() => process.exit(0))
+  .catch(async (error: unknown) => {
+    const {
+      IterableApiError,
+      IterableNetworkError,
+      IterableRawError,
+      IterableResponseValidationError,
+    } = await import("@iterable/api");
 
-  const err = (msg: string) => console.error(chalk.red(`✖ ${msg}`)); // eslint-disable-line no-console
-  const hint = (msg: string) => console.error(chalk.dim(`  ${msg}`)); // eslint-disable-line no-console
+    const err = (msg: string) => console.error(chalk.red(`✖ ${msg}`)); // eslint-disable-line no-console
+    const hint = (msg: string) => console.error(chalk.dim(`  ${msg}`)); // eslint-disable-line no-console
 
-  const helpHint = (): void => {
-    try {
-      const { category, action } = parseArgs(process.argv.slice(2));
-      if (category && action && findCommand(category, action)) {
-        hint(
-          `Run '${COMMAND_NAME} ${category} ${action} --help' for usage details.`
-        );
-        return;
+    const helpHint = (): void => {
+      try {
+        const { category, action } = parseArgs(process.argv.slice(2));
+        if (category && action && findCommand(category, action)) {
+          hint(
+            `Run '${COMMAND_NAME} ${category} ${action} --help' for usage details.`
+          );
+          return;
+        }
+      } catch {
+        // Fall through to generic hint
       }
-    } catch {
-      // Fall through to generic hint
-    }
-    hint(`Run '${COMMAND_NAME} --help' for usage details.`);
-  };
+      hint(`Run '${COMMAND_NAME} --help' for usage details.`);
+    };
 
-  if (error instanceof CliError) {
-    err(error.message);
-    helpHint();
-    process.exit(error.exitCode);
-  }
-
-  if (error instanceof z.ZodError) {
-    err("Validation error");
-    for (const issue of error.issues) {
-      hint(`${issue.path.join(".")}: ${issue.message}`);
+    if (error instanceof CliError) {
+      err(error.message);
+      helpHint();
+      process.exit(error.exitCode);
     }
-    helpHint();
-    process.exit(2);
-  }
 
-  if (
-    error instanceof IterableApiError ||
-    error instanceof IterableRawError ||
-    error instanceof IterableResponseValidationError
-  ) {
-    err(`${error.message} (${error.statusCode})`);
-    if (error.endpoint) hint(`Endpoint: ${error.endpoint}`);
-    if (error instanceof IterableApiError && error.statusCode === 401) {
-      hint(`Run '${COMMAND_NAME} keys add' to configure your API key`);
+    if (error instanceof z.ZodError) {
+      err("Validation error");
+      for (const issue of error.issues) {
+        hint(`${issue.path.join(".")}: ${issue.message}`);
+      }
+      helpHint();
+      process.exit(2);
     }
+
+    if (
+      error instanceof IterableApiError ||
+      error instanceof IterableRawError ||
+      error instanceof IterableResponseValidationError
+    ) {
+      err(`${error.message} (${error.statusCode})`);
+      if (error.endpoint) hint(`Endpoint: ${error.endpoint}`);
+      if (error instanceof IterableApiError && error.statusCode === 401) {
+        hint(`Run '${COMMAND_NAME} keys add' to configure your API key`);
+      }
+      process.exit(1);
+    }
+
+    if (error instanceof IterableNetworkError) {
+      err(error.message);
+      process.exit(1);
+    }
+
+    const msg = error instanceof Error ? error.message : String(error);
+    err(msg);
     process.exit(1);
-  }
-
-  if (error instanceof IterableNetworkError) {
-    err(error.message);
-    process.exit(1);
-  }
-
-  const msg = error instanceof Error ? error.message : String(error);
-  err(msg);
-  process.exit(1);
-});
+  });

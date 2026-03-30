@@ -1,12 +1,15 @@
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 import boxen from "boxen";
 import chalk from "chalk";
 import semverGt from "semver/functions/gt.js";
-// @types/update-notifier@6 targets v6 but the API surface we use is unchanged
-// in v7.  No v7-aligned types exist on DefinitelyTyped as of 2026-03.
-import updateNotifier from "update-notifier";
+import semverValid from "semver/functions/valid.js";
+import { z } from "zod";
 
 import { CliError } from "./errors.js";
 import { getSpinner } from "./utils/cli-env.js";
@@ -20,25 +23,89 @@ import {
 
 const execFileAsync = promisify(execFile);
 
-const ONE_DAY_MS = 86_400_000;
+const envMs = Number(process.env.ITERABLE_UPDATE_INTERVAL_MS);
+const UPDATE_CHECK_INTERVAL_MS = Number.isFinite(envMs) ? envMs : 86_400_000; // default: 1 day
+
+const REGISTRY_TIMEOUT_MS = 5_000;
+
+export const DEFAULT_CACHE_PATH = join(
+  homedir(),
+  ".iterable",
+  "update-cache.json"
+);
+
+const UpdateCacheSchema = z.object({
+  latest: z.string().refine((v) => semverValid(v) !== null),
+  checkedAt: z.number(),
+});
+
+export type UpdateCache = z.infer<typeof UpdateCacheSchema>;
+
+export function readCache(
+  cachePath: string = DEFAULT_CACHE_PATH
+): UpdateCache | undefined {
+  try {
+    const raw: unknown = JSON.parse(readFileSync(cachePath, "utf-8"));
+    return UpdateCacheSchema.parse(raw);
+  } catch {
+    return undefined;
+  }
+}
+
+export function writeCache(
+  cache: UpdateCache,
+  cachePath: string = DEFAULT_CACHE_PATH
+): void {
+  try {
+    mkdirSync(dirname(cachePath), { recursive: true, mode: 0o700 });
+    writeFileSync(cachePath, JSON.stringify(cache), { mode: 0o600 });
+  } catch {
+    // Best-effort: a failed cache write just delays the next notification
+  }
+}
+
+const RegistryResponseSchema = z.object({ version: z.string() });
+
+export async function fetchLatestVersion(
+  pkgName: string = PACKAGE_NAME
+): Promise<string | undefined> {
+  try {
+    const url = `https://registry.npmjs.org/${encodeURIComponent(pkgName)}/latest`;
+    const resp = await fetch(url, {
+      signal: AbortSignal.timeout(REGISTRY_TIMEOUT_MS),
+    });
+    if (!resp.ok) return undefined;
+    const data = RegistryResponseSchema.parse(await resp.json());
+    return data.version;
+  } catch {
+    return undefined;
+  }
+}
+
+function spawnBackgroundCheck(): void {
+  const registryUrl = `https://registry.npmjs.org/${encodeURIComponent(PACKAGE_NAME)}/latest`;
+  const workerPath = join(
+    dirname(fileURLToPath(import.meta.url)),
+    "update-check-worker.js"
+  );
+  spawn(
+    process.execPath,
+    [workerPath, registryUrl, DEFAULT_CACHE_PATH, String(REGISTRY_TIMEOUT_MS)],
+    { detached: true, stdio: "ignore" }
+  ).unref();
+}
 
 let updateCheckDone = false;
 
 /**
- * Check for a newer version in the background and register an on-exit
- * notification to stderr.  Fully fire-and-forget: errors are silently ignored
- * so normal CLI operation is never affected.
+ * Show a cached update notification (if available) and fire-and-forget a
+ * background refresh of the cache.
  *
- * The constructor creates a configstore and the background check process.
- * `check()` reads the cached result into `notifier.update` and, if the check
- * interval has elapsed, spawns a new background process for next time.
- *
- * We write to stderr (not stdout) so piped output stays clean, and we check
- * `process.stderr.isTTY` rather than stdout because notifications should
- * still appear when stdout is piped (e.g. `iterable users list | jq .`).
- *
- * CI, NO_UPDATE_NOTIFIER, and NODE_ENV=test suppression are handled
- * internally by update-notifier (notifier.config will be undefined).
+ * - Errors never affect normal CLI operation.
+ * - Notification goes to stderr so piped stdout stays clean.
+ * - Suppressed for npx, non-TTY stderr, CI, and NO_UPDATE_NOTIFIER.
+ * - The first notification appears after the check interval (default: 1 day)
+ *   because the cache must be populated by a previous invocation.
  */
 export function checkForUpdate(): void {
   if (updateCheckDone) return;
@@ -46,39 +113,42 @@ export function checkForUpdate(): void {
 
   try {
     if (IS_NPX) return;
+    if (process.env.CI || process.env.NO_UPDATE_NOTIFIER) return;
 
-    const notifier = updateNotifier({
-      pkg: { name: PACKAGE_NAME, version: PACKAGE_VERSION },
-      updateCheckInterval: ONE_DAY_MS,
-    });
+    const cache = readCache();
 
-    // Always run check() so the background process is spawned and the cache
-    // stays fresh, even when stderr is not a TTY.  Only gate the display.
-    notifier.check();
+    if (
+      cache &&
+      process.stderr.isTTY &&
+      semverGt(cache.latest, PACKAGE_VERSION)
+    ) {
+      const message =
+        `Update available: ${chalk.dim(PACKAGE_VERSION)} ${chalk.reset("→")} ${chalk.green(cache.latest)}\n` +
+        `Run ${chalk.cyan(`${COMMAND_NAME} update`)} to update`;
 
-    if (!process.stderr.isTTY) return;
-    if (!notifier.update) return;
-    if (!semverGt(notifier.update.latest, PACKAGE_VERSION)) return;
+      const box = boxen(message, {
+        padding: 1,
+        margin: { top: 1, bottom: 0 },
+        borderStyle: "round",
+        borderColor: "yellow",
+        textAlignment: "center",
+      });
 
-    const message =
-      `Update available: ${chalk.dim(notifier.update.current)} ${chalk.reset("→")} ${chalk.green(notifier.update.latest)}\n` +
-      `Run ${chalk.cyan(`${COMMAND_NAME} update`)} to update`;
+      process.on("exit", (code) => {
+        if (code !== 0) return;
+        try {
+          process.stderr.write(`${box}\n`);
+        } catch {
+          // Swallow EPIPE / write errors at exit
+        }
+      });
+    }
 
-    const box = boxen(message, {
-      padding: 1,
-      margin: { top: 1, bottom: 0 },
-      borderStyle: "round",
-      borderColor: "yellow",
-      textAlignment: "center",
-    });
-
-    process.on("exit", () => {
-      try {
-        process.stderr.write(`${box}\n`);
-      } catch {
-        // Best-effort; swallow write errors at exit (e.g. EPIPE)
-      }
-    });
+    // Refresh cache in a detached child process so the CLI can exit immediately.
+    // Uses only Node built-ins (fetch + fs) to avoid module resolution issues.
+    if (!cache || Date.now() - cache.checkedAt >= UPDATE_CHECK_INTERVAL_MS) {
+      spawnBackgroundCheck();
+    }
   } catch {
     // Never let the update check interfere with normal operation
   }
