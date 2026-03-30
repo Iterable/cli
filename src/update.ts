@@ -46,15 +46,17 @@ export function checkForUpdate(): void {
 
   try {
     if (IS_NPX) return;
-    if (!process.stderr.isTTY) return;
 
     const notifier = updateNotifier({
       pkg: { name: PACKAGE_NAME, version: PACKAGE_VERSION },
       updateCheckInterval: ONE_DAY_MS,
     });
 
+    // Always run check() so the background process is spawned and the cache
+    // stays fresh, even when stderr is not a TTY.  Only gate the display.
     notifier.check();
 
+    if (!process.stderr.isTTY) return;
     if (!notifier.update) return;
     if (!semverGt(notifier.update.latest, PACKAGE_VERSION)) return;
 
