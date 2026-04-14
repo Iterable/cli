@@ -129,14 +129,14 @@ iterable campaigns get-children <id>
 Get campaign performance metrics
 
 ```
-iterable campaigns get-metrics <campaignId>
+iterable campaigns get-metrics <campaignId> --endDateTime <endDateTime> --startDateTime <startDateTime>
 ```
 
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
 | `campaignId` | number | **yes** | Campaign ID to get metrics for |
-| `--endDateTime` | string | no | End date for metrics (YYYY-MM-DD HH:MM:SS format) |
-| `--startDateTime` | string | no | Start date for metrics (YYYY-MM-DD HH:MM:SS format) |
+| `--endDateTime` | string | **yes** | End of the metrics date range (YYYY-MM-DD HH:MM:SS format). Always use the narrowest window possible for performance. |
+| `--startDateTime` | string | **yes** | Start of the metrics date range (YYYY-MM-DD HH:MM:SS format). Always use the narrowest window possible for performance. |
 
 ### list
 
