@@ -1268,17 +1268,28 @@ iterable templates update-email <templateId>
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
 | `templateId` | number | **yes** | Template ID to update |
+| `--bccEmails` | string[] | no | BCC emails |
+| `--cacheDataFeed` | boolean | no | Cache data feed lookups for 1 hour |
 | `--campaignDataFields` | json | no | Campaign-level data fields available as {{field}} merge parameters during message rendering. These fields are overridden by user and event data fields of the same name. |
 | `--campaignId` | number | no | Associated campaign ID |
+| `--ccEmails` | string[] | no | CC emails |
 | `--creatorUserId` | string | no | Creator user ID |
-| `--fromEmail` | string | no | From email |
+| `--dataFeedId` | number | no | [Deprecated - use dataFeedIds instead] ID for data feed used in template rendering |
+| `--dataFeedIds` | number[] | no | Ids for data feeds used in template rendering |
+| `--fromEmail` | string | no | From email (must be an authorized sender) |
 | `--fromName` | string | no | From name |
-| `--html` | string | no | HTML content |
+| `--googleAnalyticsCampaignName` | string | no | Google analytics utm_campaign value |
+| `--html` | string | no | HTML contents |
+| `--isDefaultLocale` | boolean | no | Sets the locale associated with the request content as the template's default |
+| `--linkParams` | json[] | no | Parameters to append to each URL in html contents |
 | `--locale` | string | no | Template locale |
+| `--mergeDataFeedContext` | boolean | no | Merge data feed contents into user context, so fields can be referenced by {{field}} instead of [[field]] |
 | `--messageTypeId` | number | no | Message type ID |
 | `--name` | string | no | Template name |
-| `--plainText` | string | no | Plain text content |
-| `--subject` | string | no | Email subject |
+| `--plainText` | string | no | Plain text contents |
+| `--preheaderText` | string | no | Preheader text |
+| `--replyToEmail` | string | no | Reply to email |
+| `--subject` | string | no | Subject |
 
 ### update-inapp
 
@@ -1294,10 +1305,17 @@ iterable templates update-inapp <templateId>
 | `--campaignDataFields` | json | no | Campaign-level data fields available as {{field}} merge parameters during message rendering. These fields are overridden by user and event data fields of the same name. |
 | `--campaignId` | number | no | Associated campaign ID |
 | `--creatorUserId` | string | no | Creator user ID |
-| `--html` | string | no | HTML content of the in-app notification |
+| `--expirationDateTime` | string | no | The in-app message's absolute expiration time. Format is YYYY-MM-DD HH:MM:SS (UTC timestamp, time zones not allowed) |
+| `--expirationDuration` | string | no | The in-app message's expiration time, relative to its send time. Should be an expression such as now+90d |
+| `--html` | string | no | Html of the in-app notification |
+| `--inAppDisplaySettings` | json | no | Display settings |
+| `--inboxMetadata` | json | no | Title, subtitle, and thumbnail |
+| `--isDefaultLocale` | boolean | no | Sets the locale associated with the request content as the template's default |
 | `--locale` | string | no | Template locale |
 | `--messageTypeId` | number | no | Message type ID |
 | `--name` | string | no | Template name |
+| `--payload` | json | no | Payload |
+| `--webInAppDisplaySettings` | json | no | Web In-app Display settings |
 
 ### update-push
 
@@ -1310,17 +1328,28 @@ iterable templates update-push <templateId>
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
 | `templateId` | number | **yes** | Template ID to update |
-| `--badge` | number | no | Badge count |
+| `--badge` | string | no | Badge to set for push notification |
+| `--buttons` | json[] | no | Array of buttons that appear to respond to the push. Max of 3 |
+| `--cacheDataFeed` | boolean | no | Cache data feed lookups for 1 hour |
 | `--campaignDataFields` | json | no | Campaign-level data fields available as {{field}} merge parameters during message rendering. These fields are overridden by user and event data fields of the same name. |
 | `--campaignId` | number | no | Associated campaign ID |
 | `--creatorUserId` | string | no | Creator user ID |
+| `--dataFeedIds` | number[] | no | Ids for data feeds used in template rendering |
+| `--deeplink` | json | no | Deep Link. A mapping that accepts two optional properties: 'ios' & 'android' and their respective deep link values |
+| `--interruptionLevel` | `passive` \| `active` \| `time-sensitive` \| `critical` | no | An interruption level helps iOS determine when to alert a user about the arrival of a push notification |
+| `--isDefaultLocale` | boolean | no | Sets the locale associated with the request content as the template's default |
+| `--isSilentPush` | boolean | no | Whether or not this is a silent push notification template |
 | `--locale` | string | no | Template locale |
-| `--message` | string | no | Push notification message |
+| `--mergeDataFeedContext` | boolean | no | Merge data feed contents into user context, so fields can be referenced by {{field}} instead of [[field]] |
+| `--message` | string | no | Push message |
 | `--messageTypeId` | number | no | Message type ID |
 | `--name` | string | no | Template name |
-| `--payload` | json | no | Custom payload |
-| `--sound` | string | no | Sound file |
-| `--title` | string | no | Push notification title |
+| `--payload` | json | no | Payload to send with push notification |
+| `--relevanceScore` | number | no | Relevance score for iOS notifications on iOS 15+. Number is clamped between 0 and 1.0 |
+| `--richMedia` | json | no | Rich Media URL. A mapping that accepts two optional properties: 'ios' & 'android' and their respective rich media url values |
+| `--sound` | string | no | Sound |
+| `--title` | string | no | Push message title |
+| `--wake` | boolean | no | Set the content-available flag on iOS notifications, which will wake the app in the background |
 
 ### update-sms
 
@@ -1336,10 +1365,15 @@ iterable templates update-sms <templateId>
 | `--campaignDataFields` | json | no | Campaign-level data fields available as {{field}} merge parameters during message rendering. These fields are overridden by user and event data fields of the same name. |
 | `--campaignId` | number | no | Associated campaign ID |
 | `--creatorUserId` | string | no | Creator user ID |
+| `--googleAnalyticsCampaignName` | string | no | Google analytics utm_campaign value |
+| `--imageUrl` | string | no | Image URL |
+| `--isDefaultLocale` | boolean | no | Sets the locale associated with the request content as the template's default |
+| `--linkParams` | json[] | no | Parameters to append to each URL in contents |
 | `--locale` | string | no | Template locale |
-| `--message` | string | no | SMS message content |
+| `--message` | string | no | SMS message |
 | `--messageTypeId` | number | no | Message type ID |
 | `--name` | string | no | Template name |
+| `--trackingDomain` | string | no | Tracking Domain |
 
 ### upsert-email
 
@@ -1352,17 +1386,28 @@ iterable templates upsert-email <clientTemplateId>
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
 | `clientTemplateId` | string | **yes** | Client template ID |
+| `--bccEmails` | string[] | no | BCC emails |
+| `--cacheDataFeed` | boolean | no | Cache data feed lookups for 1 hour |
 | `--campaignDataFields` | json | no | Campaign-level data fields available as {{field}} merge parameters during message rendering. These fields are overridden by user and event data fields of the same name. |
 | `--campaignId` | number | no | Associated campaign ID |
+| `--ccEmails` | string[] | no | CC emails |
 | `--creatorUserId` | string | no | Creator user ID |
-| `--fromEmail` | string | no | From email |
+| `--dataFeedId` | number | no | [Deprecated - use dataFeedIds instead] ID for data feed used in template rendering |
+| `--dataFeedIds` | number[] | no | Ids for data feeds used in template rendering |
+| `--fromEmail` | string | no | From email (must be an authorized sender) |
 | `--fromName` | string | no | From name |
-| `--html` | string | no | HTML content |
+| `--googleAnalyticsCampaignName` | string | no | Google analytics utm_campaign value |
+| `--html` | string | no | HTML contents |
+| `--isDefaultLocale` | boolean | no | Sets the locale associated with the request content as the template's default |
+| `--linkParams` | json[] | no | Parameters to append to each URL in html contents |
 | `--locale` | string | no | Template locale |
+| `--mergeDataFeedContext` | boolean | no | Merge data feed contents into user context, so fields can be referenced by {{field}} instead of [[field]] |
 | `--messageTypeId` | number | no | Message type ID |
 | `--name` | string | no | Template name |
-| `--plainText` | string | no | Plain text content |
-| `--subject` | string | no | Email subject |
+| `--plainText` | string | no | Plain text contents |
+| `--preheaderText` | string | no | Preheader text |
+| `--replyToEmail` | string | no | Reply to email |
+| `--subject` | string | no | Subject |
 
 ### upsert-inapp
 
@@ -1378,10 +1423,17 @@ iterable templates upsert-inapp <clientTemplateId>
 | `--campaignDataFields` | json | no | Campaign-level data fields available as {{field}} merge parameters during message rendering. These fields are overridden by user and event data fields of the same name. |
 | `--campaignId` | number | no | Associated campaign ID |
 | `--creatorUserId` | string | no | Creator user ID |
-| `--html` | string | no | HTML content of the in-app notification |
+| `--expirationDateTime` | string | no | The in-app message's absolute expiration time. Format is YYYY-MM-DD HH:MM:SS (UTC timestamp, time zones not allowed) |
+| `--expirationDuration` | string | no | The in-app message's expiration time, relative to its send time. Should be an expression such as now+90d |
+| `--html` | string | no | Html of the in-app notification |
+| `--inAppDisplaySettings` | json | no | Display settings |
+| `--inboxMetadata` | json | no | Title, subtitle, and thumbnail |
+| `--isDefaultLocale` | boolean | no | Sets the locale associated with the request content as the template's default |
 | `--locale` | string | no | Template locale |
 | `--messageTypeId` | number | no | Message type ID |
 | `--name` | string | no | Template name |
+| `--payload` | json | no | Payload |
+| `--webInAppDisplaySettings` | json | no | Web In-app Display settings |
 
 ### upsert-push
 
@@ -1394,17 +1446,28 @@ iterable templates upsert-push <clientTemplateId>
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
 | `clientTemplateId` | string | **yes** | Client template ID |
-| `--badge` | number | no | Badge count |
+| `--badge` | string | no | Badge to set for push notification |
+| `--buttons` | json[] | no | Array of buttons that appear to respond to the push. Max of 3 |
+| `--cacheDataFeed` | boolean | no | Cache data feed lookups for 1 hour |
 | `--campaignDataFields` | json | no | Campaign-level data fields available as {{field}} merge parameters during message rendering. These fields are overridden by user and event data fields of the same name. |
 | `--campaignId` | number | no | Associated campaign ID |
 | `--creatorUserId` | string | no | Creator user ID |
+| `--dataFeedIds` | number[] | no | Ids for data feeds used in template rendering |
+| `--deeplink` | json | no | Deep Link. A mapping that accepts two optional properties: 'ios' & 'android' and their respective deep link values |
+| `--interruptionLevel` | `passive` \| `active` \| `time-sensitive` \| `critical` | no | An interruption level helps iOS determine when to alert a user about the arrival of a push notification |
+| `--isDefaultLocale` | boolean | no | Sets the locale associated with the request content as the template's default |
+| `--isSilentPush` | boolean | no | Whether or not this is a silent push notification template |
 | `--locale` | string | no | Template locale |
-| `--message` | string | no | Push notification message |
+| `--mergeDataFeedContext` | boolean | no | Merge data feed contents into user context, so fields can be referenced by {{field}} instead of [[field]] |
+| `--message` | string | no | Push message |
 | `--messageTypeId` | number | no | Message type ID |
 | `--name` | string | no | Template name |
-| `--payload` | json | no | Custom payload |
-| `--sound` | string | no | Sound file |
-| `--title` | string | no | Push notification title |
+| `--payload` | json | no | Payload to send with push notification |
+| `--relevanceScore` | number | no | Relevance score for iOS notifications on iOS 15+. Number is clamped between 0 and 1.0 |
+| `--richMedia` | json | no | Rich Media URL. A mapping that accepts two optional properties: 'ios' & 'android' and their respective rich media url values |
+| `--sound` | string | no | Sound |
+| `--title` | string | no | Push message title |
+| `--wake` | boolean | no | Set the content-available flag on iOS notifications, which will wake the app in the background |
 
 ### upsert-sms
 
@@ -1420,10 +1483,15 @@ iterable templates upsert-sms <clientTemplateId>
 | `--campaignDataFields` | json | no | Campaign-level data fields available as {{field}} merge parameters during message rendering. These fields are overridden by user and event data fields of the same name. |
 | `--campaignId` | number | no | Associated campaign ID |
 | `--creatorUserId` | string | no | Creator user ID |
+| `--googleAnalyticsCampaignName` | string | no | Google analytics utm_campaign value |
+| `--imageUrl` | string | no | Image URL |
+| `--isDefaultLocale` | boolean | no | Sets the locale associated with the request content as the template's default |
+| `--linkParams` | json[] | no | Parameters to append to each URL in contents |
 | `--locale` | string | no | Template locale |
-| `--message` | string | no | SMS message content |
+| `--message` | string | no | SMS message |
 | `--messageTypeId` | number | no | Message type ID |
 | `--name` | string | no | Template name |
+| `--trackingDomain` | string | no | Tracking Domain |
 
 
 ## users (13)
