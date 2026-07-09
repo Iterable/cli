@@ -1,4 +1,4 @@
-# Available Commands (110)
+# Available Commands (111)
 
 All commands follow the pattern: `iterable <category> <command> [options]`
 
@@ -197,7 +197,7 @@ iterable campaigns trigger --campaignId <campaignId> --listIds <listIds...>
 | `--suppressionListIds` | number[] | no | Lists to suppress |
 
 
-## catalogs (12)
+## catalogs (13)
 
 ### bulk-delete-items
 
@@ -317,6 +317,19 @@ iterable catalogs partial-update-item --catalogName <catalogName> --itemId <item
 | `--itemId` | string | **yes** | ID of the catalog item |
 | `--update` | json | **yes** | Fields to update |
 
+### partial-update-items
+
+Bulk partial update catalog items (merge fields per item ID)
+
+```
+iterable catalogs partial-update-items <catalogName> --documents <json>
+```
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `catalogName` | string | **yes** | Name of the catalog |
+| `--documents` | json | **yes** | Map of catalog item ID to field values |
+
 ### replace-item
 
 Replace (PUT) a catalog item - replaces the entire item with new value
@@ -331,6 +344,19 @@ iterable catalogs replace-item --catalogName <catalogName> --itemId <itemId> --v
 | `--itemId` | string | **yes** | ID of the catalog item |
 | `--value` | json | **yes** | New value for the item |
 
+### replace-items
+
+Bulk replace catalog items (each item becomes only provided fields)
+
+```
+iterable catalogs replace-items <catalogName> --documents <json>
+```
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `catalogName` | string | **yes** | Name of the catalog |
+| `--documents` | json | **yes** | Map of catalog item ID to field values |
+
 ### update-field-mappings
 
 Update catalog field mappings (data types)
@@ -343,19 +369,6 @@ iterable catalogs update-field-mappings <catalogName> --mappingsUpdates <mapping
 |--------|------|----------|-------------|
 | `catalogName` | string | **yes** | Name of the catalog |
 | `--mappingsUpdates` | string[] | **yes** | Field mappings to update |
-
-### update-items
-
-Update catalog items
-
-```
-iterable catalogs update-items <catalogName> --items <items...>
-```
-
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `catalogName` | string | **yes** | Name of the catalog |
-| `--items` | json[] | **yes** | Catalog items to update |
 
 
 ## events (4)

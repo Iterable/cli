@@ -8,9 +8,10 @@ import {
   GetCatalogItemsParamsSchema,
   GetCatalogsParamsSchema,
   PartialUpdateCatalogItemParamsSchema,
+  PartialUpdateCatalogItemsParamsSchema,
   ReplaceCatalogItemParamsSchema,
+  ReplaceCatalogItemsParamsSchema,
   UpdateCatalogFieldMappingsParamsSchema,
-  UpdateCatalogItemParamsSchema,
 } from "@iterable/api";
 
 import type { CommandDefinition } from "./types.js";
@@ -70,10 +71,18 @@ export const catalogCommands: CommandDefinition[] = [
   }),
   defineCommand({
     category: "catalogs",
-    name: "update-items",
-    description: "Update catalog items",
-    clientMethod: "updateCatalogItems",
-    schema: UpdateCatalogItemParamsSchema,
+    name: "partial-update-items",
+    description: "Bulk partial update catalog items (merge fields per item ID)",
+    clientMethod: "partialUpdateCatalogItems",
+    schema: PartialUpdateCatalogItemsParamsSchema,
+  }),
+  defineCommand({
+    category: "catalogs",
+    name: "replace-items",
+    description:
+      "Bulk replace catalog items (each item becomes only provided fields)",
+    clientMethod: "replaceCatalogItems",
+    schema: ReplaceCatalogItemsParamsSchema,
   }),
   defineCommand({
     category: "catalogs",
