@@ -1,4 +1,4 @@
-# Available Commands (111)
+# Available Commands (120)
 
 All commands follow the pattern: `iterable <category> <command> [options]`
 
@@ -432,7 +432,72 @@ iterable events track-bulk --events <events...>
 | `--events` | json[] | **yes** |  |
 
 
-## experiments (4)
+## experiments (13)
+
+### cancel
+
+Cancel a running or winner-found campaign experiment without declaring a winner
+
+```
+iterable experiments cancel <experimentId>
+```
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `experimentId` | number | **yes** | Experiment ID |
+
+### copy-variant
+
+Copy a template into a new variant on a draft or ready campaign experiment
+
+```
+iterable experiments copy-variant --copyFromTemplateId <copyFromTemplateId> --experimentId <experimentId>
+```
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `--copyFromTemplateId` | number | **yes** | Template ID to copy into a new variant |
+| `--experimentId` | number | **yes** | Experiment ID |
+| `--name` | string | no | Display name for the new variant |
+
+### create
+
+Create a draft campaign experiment. The campaign template becomes the control.
+
+```
+iterable experiments create --campaignId <campaignId> --experimentType <experimentType>
+```
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `--campaignId` | number | **yes** | Campaign ID |
+| `--experimentType` | `SubjectLine` \| `PreheaderText` \| `FromNameAndSender` \| `EmailBody` \| `WholeEmail` | **yes** | What to test. Send-time, send-time optimization, and frequency optimization are not supported. |
+| `--name` | string | no | Display name. If omitted, Iterable uses '{campaign name} Experiment'. |
+
+### declare-winner
+
+Declare a winning variant and end a running or winner-found campaign experiment
+
+```
+iterable experiments declare-winner --experimentId <experimentId> --variantId <variantId>
+```
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `--experimentId` | number | **yes** | Experiment ID |
+| `--variantId` | number | **yes** | Variant ID to declare as the winner. The holdout group cannot be selected. |
+
+### delete
+
+Delete a draft, ready, or errored campaign experiment
+
+```
+iterable experiments delete <experimentId>
+```
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `experimentId` | number | **yes** | Experiment ID |
 
 ### get
 
@@ -460,6 +525,32 @@ iterable experiments get-metrics
 | `--endDateTime` | string | no | Export ending at (ISO 8601 format) |
 | `--experimentId` | number[] | no | Experiment IDs to export (can specify multiple) |
 | `--startDateTime` | string | no | Export starting from (ISO 8601 format) |
+
+### get-totals
+
+Get lifetime send and conversion totals for a campaign experiment
+
+```
+iterable experiments get-totals <experimentId>
+```
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `experimentId` | number | **yes** | Experiment ID |
+
+### get-trends
+
+Get the performance time series for a campaign experiment. Provide both start and end times, or omit both to use the run window.
+
+```
+iterable experiments get-trends <experimentId>
+```
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `experimentId` | number | **yes** | Experiment ID |
+| `--endDateTime` | string | no | Series end (ISO 8601). Required when startDateTime is set. |
+| `--startDateTime` | string | no | Series start (ISO 8601). Required when endDateTime is set. |
 
 ### get-variants
 
@@ -489,6 +580,35 @@ iterable experiments list
 | `--offset` | number | no | Number of results to skip (default 0) |
 | `--startDate` | string | no | Filter experiments starting from this date (ISO 8601 format) |
 | `--status` | `draft` \| `running` \| `finished` | no | Filter by status (draft, running, finished) |
+
+### start
+
+Start a draft or ready campaign experiment
+
+```
+iterable experiments start <experimentId>
+```
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `experimentId` | number | **yes** | Experiment ID |
+
+### update-settings
+
+Update settings on a draft or ready campaign experiment. Omit a field to leave it unchanged.
+
+```
+iterable experiments update-settings <experimentId>
+```
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `experimentId` | number | **yes** | Experiment ID |
+| `--conversionEventSettings` | json | no | Conversion settings. Omit to leave unchanged. (JSON: {systemConversionEventType, customConversionId}) |
+| `--evenlySplitVariations` | boolean | no | Set true to split traffic evenly and clear blast and trigger settings. false is rejected. Omit to leave allocation unchanged. |
+| `--explorationBlastSettings` | json | no | Blast exploration settings. Null removes them. Omit to leave unchanged. (JSON: {testSizePercentage, testDurationMinutes}) |
+| `--explorationTriggerSettings` | json | no | Trigger exploration settings. Null removes them. Omit to leave unchanged. (JSON: {testSendsPerVariation}) |
+| `--holdoutSettings` | json | no | Holdout settings. Null removes them. Omit to leave unchanged. (JSON: {holdOutGroupSize, attributionPeriodHours}) |
 
 
 ## export (4)
